@@ -1,9 +1,11 @@
+
 'use client';
 
 import type { ChangeEvent, FormEvent } from 'react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -12,13 +14,15 @@ import { useToast } from '@/hooks/use-toast';
 import { generateQuestions } from '@/ai/flows/generate-questions';
 import { enhanceAnswerWithInternetSearch } from '@/ai/flows/enhance-answer-with-internet-search';
 import { generateMnemonics } from '@/ai/flows/generate-mnemonics';
-import type { IQGeneratedQuestion, IAnsweredQuestion } from '@/types';
+import type { IQGeneratedQuestion, IAnsweredQuestion, QuestionStyle } from '@/types';
 import { addQuestionToHistory } from '@/lib/localStorage';
-import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, CheckCircle2, XCircle, RefreshCcw, Send, MessageCircleQuestion, Edit3 } from 'lucide-react';
+import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, CheckCircle2, XCircle, RefreshCcw, Send, MessageCircleQuestion, Edit3, ListChecks, Settings2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 export default function HomePage() {
   const [legalText, setLegalText] = useState<string>('');
+  const [numQuestions, setNumQuestions] = useState<number>(1);
+  const [questionStyle, setQuestionStyle] = useState<QuestionStyle>('mcq4');
   const [generatedQuestions, setGeneratedQuestions] = useState<IQGeneratedQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
@@ -37,7 +41,6 @@ export default function HomePage() {
   const currentQuestion = generatedQuestions[currentQuestionIndex];
 
   useEffect(() => {
-    // Reset states when legal text changes or new questions are generated implicitly
     setSelectedAnswerIndex(null);
     setIsAnswerSubmitted(false);
     setCurrentEnhancedDetails(null);
@@ -47,25 +50,29 @@ export default function HomePage() {
   const handleGenerateQuestions = async (event: FormEvent) => {
     event.preventDefault();
     if (!legalText.trim()) {
-      toast({ title: 'Erro', description: 'Por favor, insira um trecho de lei.', variant: 'destructive' });
+      toast({ title: 'Texto Legal Ausente', description: 'Por favor, insira um trecho de lei para análise.', variant: 'destructive' });
       return;
     }
+    if (numQuestions <= 0 || numQuestions > 10) {
+      toast({ title: 'Número de Questões Inválido', description: 'Por favor, insira um número de questões entre 1 e 10.', variant: 'destructive' });
+      return;
+    }
+
     setIsLoadingQuestions(true);
-    setGeneratedQuestions([]); // Clear previous questions
+    setGeneratedQuestions([]); 
     setCurrentQuestionIndex(0);
 
-
     try {
-      const result = await generateQuestions({ legalText });
+      const result = await generateQuestions({ legalText, numQuestions, questionStyle });
       if (result.questions && result.questions.length > 0) {
         setGeneratedQuestions(result.questions);
-        toast({ title: 'Sucesso!', description: `${result.questions.length} questão(ões) gerada(s).` });
+        toast({ title: 'Sucesso!', description: `${result.questions.length} questão(ões) gerada(s) no estilo ${questionStyle}.` });
       } else {
-        toast({ title: 'Nenhuma questão gerada', description: 'Tente um texto legal diferente ou mais específico.', variant: 'default' });
+        toast({ title: 'Nenhuma questão gerada', description: 'A IA não conseguiu gerar questões com os parâmetros fornecidos. Tente um texto legal diferente, ajuste as configurações ou tente novamente.', variant: 'default' });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating questions:', error);
-      toast({ title: 'Erro ao gerar questões', description: 'Tente novamente mais tarde.', variant: 'destructive' });
+      toast({ title: 'Erro ao Gerar Questões', description: error.message || 'Ocorreu um erro inesperado. Tente novamente mais tarde.', variant: 'destructive' });
     } finally {
       setIsLoadingQuestions(false);
     }
@@ -81,7 +88,6 @@ export default function HomePage() {
     let enhancedData: { enhancedExplanation?: string; additionalSearchLinks?: string[]; generatedMnemonics?: string[] } = {};
 
     try {
-      // Fetch enhanced explanation and mnemonics in parallel
       const [enhancementResult, mnemonicsResult] = await Promise.all([
         enhanceAnswerWithInternetSearch({
           legalText,
@@ -126,13 +132,14 @@ export default function HomePage() {
     if (currentQuestionIndex < generatedQuestions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
-      toast({ title: 'Quiz Concluído!', description: 'Você respondeu todas as questões.' });
-      // Optionally reset or navigate
+      toast({ title: 'Quiz Concluído!', description: 'Você respondeu todas as questões geradas.' });
     }
   };
 
   const handleNewAnalysis = () => {
     setLegalText('');
+    setNumQuestions(1);
+    setQuestionStyle('mcq4');
     setGeneratedQuestions([]);
     setCurrentQuestionIndex(0);
     setSelectedAnswerIndex(null);
@@ -147,25 +154,68 @@ export default function HomePage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-2xl">
-            <FileText className="text-primary" /> Analisador de Texto Legal
+            <FileText className="text-primary" /> Gerador de Questões Jurídicas
           </CardTitle>
           <CardDescription>
-            Insira um trecho de lei para gerar questões de múltipla escolha, obter explicações detalhadas, dicas de memorização e mais.
+            Insira um trecho de lei, defina o número e o estilo das questões, e comece a praticar.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleGenerateQuestions} className="space-y-4">
-            <Textarea
-              placeholder="Cole aqui o trecho da lei (ex: Art. 5º da Constituição)..."
-              value={legalText}
-              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setLegalText(e.target.value)}
-              rows={8}
-              className="text-base"
-              disabled={isLoadingQuestions}
-            />
-            <div className="flex flex-col sm:flex-row gap-2">
+          <form onSubmit={handleGenerateQuestions} className="space-y-6">
+            <div>
+              <Label htmlFor="legalText" className="text-base font-medium">Trecho da Lei</Label>
+              <Textarea
+                id="legalText"
+                placeholder="Cole aqui o trecho da lei (ex: Art. 5º da Constituição)..."
+                value={legalText}
+                onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setLegalText(e.target.value)}
+                rows={6}
+                className="text-base mt-1"
+                disabled={isLoadingQuestions}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+              <div>
+                <Label htmlFor="numQuestions" className="text-base font-medium">Número de Questões</Label>
+                <Input
+                  id="numQuestions"
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={numQuestions}
+                  onChange={(e) => setNumQuestions(parseInt(e.target.value) || 1)}
+                  className="text-base mt-1 w-24"
+                  disabled={isLoadingQuestions}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-base font-medium">Estilo das Questões</Label>
+                <RadioGroup
+                  value={questionStyle}
+                  onValueChange={(value) => setQuestionStyle(value as QuestionStyle)}
+                  className="flex flex-col gap-2 pt-1 sm:flex-row sm:gap-3"
+                  disabled={isLoadingQuestions}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="cespe" id="q-style-cespe" />
+                    <Label htmlFor="q-style-cespe" className="font-normal text-sm cursor-pointer">Certo/Errado</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="mcq4" id="q-style-mcq4" />
+                    <Label htmlFor="q-style-mcq4" className="font-normal text-sm cursor-pointer">4 Opções (A-D)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="mcq5" id="q-style-mcq5" />
+                    <Label htmlFor="q-style-mcq5" className="font-normal text-sm cursor-pointer">5 Opções (A-E)</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
               <Button type="submit" disabled={isLoadingQuestions || !legalText.trim()} className="w-full sm:w-auto bg-primary hover:bg-primary/90">
-                {isLoadingQuestions ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                {isLoadingQuestions ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Settings2 className="mr-2 h-4 w-4" />}
                 Gerar Questões
               </Button>
               <Button type="button" variant="outline" onClick={handleNewAnalysis} disabled={isLoadingQuestions} className="w-full sm:w-auto">
@@ -182,8 +232,11 @@ export default function HomePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-xl">
               <MessageCircleQuestion className="text-primary"/> Questão {currentQuestionIndex + 1} de {generatedQuestions.length}
+               <span className="text-sm font-normal text-muted-foreground ml-auto">
+                (Estilo: {currentQuestion.questionStyle === 'cespe' ? 'Certo/Errado' : `${currentQuestion.options.length} Opções`})
+              </span>
             </CardTitle>
-            <CardDescription className="text-lg whitespace-pre-wrap">{currentQuestion.question}</CardDescription>
+            <CardDescription className="text-lg whitespace-pre-wrap pt-2">{currentQuestion.question}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <RadioGroup
@@ -206,8 +259,10 @@ export default function HomePage() {
                 Verificar Resposta
               </Button>
             ) : (
-              <Button onClick={handleNextQuestion} disabled={currentQuestionIndex >= generatedQuestions.length - 1} className="w-full sm:w-auto">
-                Próxima Questão <Edit3 className="ml-2 h-4 w-4" />
+              <Button onClick={handleNextQuestion} disabled={currentQuestionIndex >= generatedQuestions.length - 1 && isAnswerSubmitted} className="w-full sm:w-auto">
+                {currentQuestionIndex >= generatedQuestions.length - 1 ? 'Quiz Finalizado' : 'Próxima Questão'}
+                 {currentQuestionIndex < generatedQuestions.length - 1 && <Edit3 className="ml-2 h-4 w-4" />}
+                 {currentQuestionIndex >= generatedQuestions.length -1 && <ListChecks className="ml-2 h-4 w-4"/>}
               </Button>
             )}
           </CardFooter>
@@ -223,7 +278,7 @@ export default function HomePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <Alert variant={selectedAnswerIndex === currentQuestion.correctAnswerIndex ? 'default' : 'destructive'} className={selectedAnswerIndex === currentQuestion.correctAnswerIndex ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'}>
+            <Alert variant={selectedAnswerIndex === currentQuestion.correctAnswerIndex ? 'default' : 'destructive'} className={selectedAnswerIndex === currentQuestion.correctAnswerIndex ? 'bg-green-50 dark:bg-green-800/30 border-green-300 dark:border-green-600' : 'bg-red-50 dark:bg-red-800/30 border-red-300 dark:border-red-600'}>
               <AlertTitle className="font-semibold">
                 {selectedAnswerIndex === currentQuestion.correctAnswerIndex
                   ? 'Resposta Correta!'
@@ -245,7 +300,7 @@ export default function HomePage() {
             {!isLoadingExplanation && (
               <>
                 <div>
-                  <h3 className="font-semibold text-lg mb-2 flex items-center gap-2"><Info className="text-primary"/> Explicação</h3>
+                  <h3 className="font-semibold text-lg mb-2 flex items-center gap-2"><Info className="text-primary"/> Explicação Detalhada</h3>
                   <p className="text-muted-foreground whitespace-pre-wrap">
                     {currentEnhancedDetails?.enhancedExplanation || currentQuestion.explanation}
                   </p>
