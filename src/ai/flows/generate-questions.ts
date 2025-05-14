@@ -40,7 +40,7 @@ const QuestionObjectSchema = z.object({
       if (data.questionStyle === 'mcq5') {
         return data.options.length === 5 && data.correctAnswerIndex <= 4;
       }
-      return false; 
+      return false; // Should not happen if questionStyle is one of the enum values
     },
     {
       message: 'Options length, content, or correctAnswerIndex is inconsistent with questionStyle.',
@@ -68,7 +68,7 @@ Instructions for each question style:
 
 1.  If 'questionStyle' is 'cespe':
     *   Formulate an affirmative statement derived directly from the legal text. This statement will be the "question".
-    *   The "options" array MUST be exactly ["Certo", "Errado"]. Ensure these exact strings.
+    *   The "options" array MUST be exactly ["Certo", "Errado"]. Ensure these exact strings, case-insensitive matching for "Certo" and "Errado" is acceptable in the output options array from your side (e.g. ["certo", "errado"] or ["Certo", "Errado"]), but the semantic meaning must be preserved.
     *   "correctAnswerIndex" must be 0 if the statement is "Certo" (factually correct according to the legal text) or 1 if the statement is "Errado" (factually incorrect).
     *   The "explanation" must clarify why the statement is Certo or Errado, strictly referencing the "letra da lei" (the exact wording/provisions) of the provided legal text.
     *   The "questionStyle" field in the output object MUST be "cespe".
@@ -104,15 +104,15 @@ const generateQuestionsFlow = ai.defineFlow(
   },
   async input => {
     const result = await generateQuestionsPrompt(input);
-    const output = result.output; 
-    const rawText = result.text; 
+    const output = result.output; // Access the parsed output directly
+    const rawText = result.text; // Access the raw text response
 
     if (!output || !output.questions || output.questions.length === 0) {
       console.error(
         'generateQuestionsFlow: LLM output failed to parse, was empty, or did not contain questions. Input:',
         input,
         'Raw LLM response text:',
-        rawText
+        rawText 
       );
       throw new Error(
         'A IA falhou ao gerar as questões no formato esperado ou não gerou questões. Por favor, tente um texto legal diferente, ajuste o número de questões ou tente novamente.'
