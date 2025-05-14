@@ -1,0 +1,39 @@
+import Link from 'next/link';
+import { LogoIcon } from '@/components/icons/LogoIcon';
+import { Button } from '@/components/ui/button';
+import { History, Home, MessageSquareText } from 'lucide-react';
+
+export function Header() {
+  return (
+    <header className="border-b bg-card">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
+        <Link href="/" className="flex items-center gap-2" aria-label="Página Inicial LexQuiz AI">
+          <LogoIcon className="h-8 w-8 text-primary" />
+          <span className="text-xl font-bold tracking-tight text-foreground">
+            LexQuiz AI
+          </span>
+        </Link>
+        <nav className="flex items-center gap-2 sm:gap-4">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/" className="flex items-center gap-1">
+              <Home className="h-4 w-4" />
+              <span className="hidden sm:inline">Início</span>
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/history" className="flex items-center gap-1">
+              <History className="h-4 w-4" />
+              <span className="hidden sm:inline">Histórico</span>
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/feedback" className="flex items-center gap-1">
+              <MessageSquareText className="h-4 w-4" />
+              <span className="hidden sm:inline">Feedback</span>
+            </Link>
+          </Button>
+        </nav>
+      </div>
+    </header>
+  );
+}
