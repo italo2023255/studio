@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -14,7 +15,7 @@ import {z} from 'genkit';
 const GenerateAnswersWithExplanationsInputSchema = z.object({
   legalText: z.string().describe('The legal text to generate questions and answers from.'),
   question: z.string().describe('The question to generate answers for.'),
-  numAlternatives: z.number().describe('The number of multiple-choice alternatives to generate.'),
+  numAlternatives: z.number().describe('The number of multiple-choice alternatives to generate (used for context, not for structuring the output of this specific flow).'),
 });
 
 export type GenerateAnswersWithExplanationsInput = z.infer<
@@ -22,10 +23,10 @@ export type GenerateAnswersWithExplanationsInput = z.infer<
 >;
 
 const GenerateAnswersWithExplanationsOutputSchema = z.object({
-  correctAnswer: z.string().describe('The correct answer to the question.'),
+  correctAnswer: z.string().describe('The correct answer to the question. This should be the text of the correct option.'),
   explanation: z
     .string()
-    .describe('A detailed explanation of the correct answer, referencing the legal text.'),
+    .describe('A detailed explanation of why the provided answer is correct, referencing the legal text strictly (letra da lei).'),
 });
 
 export type GenerateAnswersWithExplanationsOutput = z.infer<
@@ -42,14 +43,16 @@ const generateAnswersWithExplanationsPrompt = ai.definePrompt({
   name: 'generateAnswersWithExplanationsPrompt',
   input: {schema: GenerateAnswersWithExplanationsInputSchema},
   output: {schema: GenerateAnswersWithExplanationsOutputSchema},
-  prompt: `Given the following legal text and question, generate the correct answer and a detailed explanation referencing the legal text.
+  prompt: `Given the following legal text and question, identify the correct answer and provide a detailed explanation strictly referencing the legal text ("letra da lei").
 
-Legal Text: {{{legalText}}}
+Legal Text:
+{{{legalText}}}
 
-Question: {{{question}}}
+Question:
+{{{question}}}
 
-Correct Answer:
-Explanation:`, // Removed Handlebars anti-patterns.
+Focus on providing the text of the correct answer for the 'correctAnswer' field and a comprehensive explanation for the 'explanation' field.
+The output must be a JSON object with "correctAnswer" and "explanation" keys.`,
 });
 
 const generateAnswersWithExplanationsFlow = ai.defineFlow(
@@ -59,7 +62,18 @@ const generateAnswersWithExplanationsFlow = ai.defineFlow(
     outputSchema: GenerateAnswersWithExplanationsOutputSchema,
   },
   async input => {
-    const {output} = await generateAnswersWithExplanationsPrompt(input);
-    return output!;
+    const {output, text: rawText} = await generateAnswersWithExplanationsPrompt(input);
+     if (!output || !output.correctAnswer || !output.explanation) {
+      console.error(
+        'generateAnswersWithExplanationsFlow: LLM output failed to parse or was incomplete. Input:',
+        input,
+        'Raw LLM response text:',
+        rawText
+      );
+      throw new Error(
+        'A IA falhou ao gerar a explicação da resposta. Tente novamente.'
+      );
+    }
+    return output;
   }
 );
