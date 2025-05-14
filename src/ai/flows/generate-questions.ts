@@ -41,10 +41,11 @@ const generateQuestionsPrompt = ai.definePrompt({
   prompt: `You are a legal expert who generates multiple-choice questions from legal texts.
 
   Based on the following legal text, generate multiple-choice questions with 4 answer options, a correct answer, and an explanation.
-  Also generate mnemonic devices and links to external resources when possible. Return it as a JSON array.
+  Also generate mnemonic devices and links to external resources when possible.
+  Return a JSON object with a "questions" key, where the value is an array of these question objects. Each question object should conform to the provided output schema.
 
   Legal Text:
-  {{legalText}}`,
+  {{{legalText}}}`,
 });
 
 const generateQuestionsFlow = ai.defineFlow(
