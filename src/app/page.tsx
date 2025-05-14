@@ -3,6 +3,7 @@
 
 import type { ChangeEvent, FormEvent } from 'react';
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -14,9 +15,10 @@ import { useToast } from '@/hooks/use-toast';
 import { generateQuestions } from '@/ai/flows/generate-questions';
 import { enhanceAnswerWithInternetSearch } from '@/ai/flows/enhance-answer-with-internet-search';
 import { generateMnemonics } from '@/ai/flows/generate-mnemonics';
+import { generateImageForQuestion } from '@/ai/flows/generate-image-for-question'; // New import
 import type { IQGeneratedQuestion, IAnsweredQuestion, QuestionStyle } from '@/types';
 import { addQuestionToHistory } from '@/lib/localStorage';
-import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, CheckCircle2, XCircle, RefreshCcw, Send, MessageCircleQuestion, Edit3, ListChecks, Settings2 } from 'lucide-react';
+import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, CheckCircle2, XCircle, RefreshCcw, Send, MessageCircleQuestion, Edit3, ListChecks, Settings2, Image as ImageIcon } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 export default function HomePage() {
@@ -31,10 +33,11 @@ export default function HomePage() {
     enhancedExplanation?: string;
     additionalSearchLinks?: string[];
     generatedMnemonics?: string[];
+    imageDataUri?: string | null; // New field
   } | null>(null);
   
   const [isLoadingQuestions, setIsLoadingQuestions] = useState<boolean>(false);
-  const [isLoadingExplanation, setIsLoadingExplanation] = useState<boolean>(false);
+  const [isLoadingEnhancements, setIsLoadingEnhancements] = useState<boolean>(false); // Renamed for clarity
 
   const { toast } = useToast();
 
@@ -81,14 +84,18 @@ export default function HomePage() {
   const handleSubmitAnswer = async () => {
     if (selectedAnswerIndex === null || !currentQuestion) return;
 
-    setIsLoadingExplanation(true);
+    setIsLoadingEnhancements(true);
     setIsAnswerSubmitted(true);
 
     const isCorrect = selectedAnswerIndex === currentQuestion.correctAnswerIndex;
-    let enhancedData: { enhancedExplanation?: string; additionalSearchLinks?: string[]; generatedMnemonics?: string[] } = {};
+    let enhancedData: typeof currentEnhancedDetails = {};
 
     try {
-      const [enhancementResult, mnemonicsResult] = await Promise.all([
+      // Extract a simple legal concept for image generation if possible
+      const conceptMatch = currentQuestion.question.match(/sobre o que trata o (artigo|princípio) de ([^?.,]+)/i) || currentQuestion.explanation.match(/trata de ([^.]+)/i);
+      const legalConceptForImage = conceptMatch ? conceptMatch[2] || conceptMatch[1] : "justiça legal";
+
+      const [enhancementResult, mnemonicsResult, imageResult] = await Promise.all([
         enhanceAnswerWithInternetSearch({
           legalText,
           question: currentQuestion.question,
@@ -99,11 +106,17 @@ export default function HomePage() {
           question: currentQuestion.question,
           answer: currentQuestion.options[currentQuestion.correctAnswerIndex],
         }),
+        generateImageForQuestion({
+          question: currentQuestion.question,
+          correctAnswerText: currentQuestion.options[currentQuestion.correctAnswerIndex],
+          legalConcept: legalConceptForImage,
+        })
       ]);
 
       enhancedData.enhancedExplanation = enhancementResult.enhancedAnswer;
       enhancedData.additionalSearchLinks = enhancementResult.searchLinks;
       enhancedData.generatedMnemonics = mnemonicsResult.mnemonics;
+      enhancedData.imageDataUri = imageResult.imageDataUri;
       
       setCurrentEnhancedDetails(enhancedData);
 
@@ -111,7 +124,7 @@ export default function HomePage() {
       console.error('Error fetching enhancements:', error);
       toast({ title: 'Erro ao buscar informações adicionais', description: 'Exibindo informações básicas.', variant: 'destructive' });
     } finally {
-      setIsLoadingExplanation(false);
+      setIsLoadingEnhancements(false);
     }
     
     const answeredQuestion: IAnsweredQuestion = {
@@ -123,6 +136,7 @@ export default function HomePage() {
       enhancedExplanation: enhancedData.enhancedExplanation || currentQuestion.explanation,
       additionalSearchLinks: enhancedData.additionalSearchLinks,
       generatedMnemonics: enhancedData.generatedMnemonics,
+      imageDataUri: enhancedData.imageDataUri,
       timestamp: Date.now(),
     };
     addQuestionToHistory(answeredQuestion);
@@ -146,7 +160,7 @@ export default function HomePage() {
     setIsAnswerSubmitted(false);
     setCurrentEnhancedDetails(null);
     setIsLoadingQuestions(false);
-    setIsLoadingExplanation(false);
+    setIsLoadingEnhancements(false);
   };
 
   return (
@@ -242,7 +256,7 @@ export default function HomePage() {
             <RadioGroup
               value={selectedAnswerIndex !== null ? selectedAnswerIndex.toString() : undefined}
               onValueChange={(value) => setSelectedAnswerIndex(parseInt(value))}
-              disabled={isAnswerSubmitted || isLoadingExplanation}
+              disabled={isAnswerSubmitted || isLoadingEnhancements}
             >
               {currentQuestion.options.map((option, index) => (
                 <div key={index} className="flex items-center space-x-2 p-3 border rounded-md hover:bg-muted/50 transition-colors">
@@ -254,8 +268,8 @@ export default function HomePage() {
           </CardContent>
           <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-2">
             {!isAnswerSubmitted ? (
-              <Button onClick={handleSubmitAnswer} disabled={selectedAnswerIndex === null || isLoadingExplanation} className="w-full sm:w-auto bg-accent hover:bg-accent/90">
-                {isLoadingExplanation ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+              <Button onClick={handleSubmitAnswer} disabled={selectedAnswerIndex === null || isLoadingEnhancements} className="w-full sm:w-auto bg-accent hover:bg-accent/90">
+                {isLoadingEnhancements ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                 Verificar Resposta
               </Button>
             ) : (
@@ -290,14 +304,14 @@ export default function HomePage() {
               </AlertDescription>
             </Alert>
 
-            {isLoadingExplanation && (
+            {isLoadingEnhancements && (
               <div className="flex items-center justify-center p-4">
                 <Loader2 className="mr-2 h-6 w-6 animate-spin text-primary" />
-                <span className="text-muted-foreground">Buscando informações adicionais...</span>
+                <span className="text-muted-foreground">Buscando informações adicionais e imagem...</span>
               </div>
             )}
             
-            {!isLoadingExplanation && (
+            {!isLoadingEnhancements && (
               <>
                 <div>
                   <h3 className="font-semibold text-lg mb-2 flex items-center gap-2"><Info className="text-primary"/> Explicação Detalhada</h3>
@@ -306,11 +320,31 @@ export default function HomePage() {
                   </p>
                 </div>
 
+                {currentEnhancedDetails?.imageDataUri && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="font-semibold text-lg mb-2 flex items-center gap-2"><ImageIcon className="text-primary"/> Imagem Conceitual</h3>
+                      <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30">
+                        <Image 
+                            src={currentEnhancedDetails.imageDataUri} 
+                            alt="Imagem conceitual relacionada à questão" 
+                            width={300} 
+                            height={300} 
+                            className="rounded-md object-contain max-w-full h-auto"
+                            data-ai-hint="legal concept"
+                        />
+                      </div>
+                       <p className="text-xs text-muted-foreground mt-1 text-center">Imagem gerada por IA. Pode não ser perfeitamente precisa.</p>
+                    </div>
+                  </>
+                )}
+
                 {(currentQuestion.mnemonic || (currentEnhancedDetails?.generatedMnemonics && currentEnhancedDetails.generatedMnemonics.length > 0)) && (
                   <>
                   <Separator />
                   <div>
-                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2"><Lightbulb className="text-primary"/> Dicas e Macetes</h3>
+                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2"><Lightbulb className="text-primary"/> Dicas e Macetes (Bizus)</h3>
                     <ul className="list-disc list-inside text-muted-foreground space-y-1">
                       {currentQuestion.mnemonic && <li>{currentQuestion.mnemonic}</li>}
                       {currentEnhancedDetails?.generatedMnemonics?.map((mnemonic, idx) => (
@@ -325,13 +359,13 @@ export default function HomePage() {
                    <>
                    <Separator />
                    <div>
-                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2"><LinkIcon className="text-primary"/> Links Úteis</h3>
+                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2"><LinkIcon className="text-primary"/> Links Úteis (Internet)</h3>
                     <ul className="list-disc list-inside text-muted-foreground space-y-1">
                       {currentQuestion.searchLinks?.map((link, idx) => (
                         <li key={`sl-${idx}`}><a href={link} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">{link}</a></li>
                       ))}
                       {currentEnhancedDetails?.additionalSearchLinks?.map((link, idx) => (
-                        <li key={`add-sl-${idx}`}><a href={link} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">{link}</a></li>
+                        <li key={`add-sl-${idx}`}><a href={link} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">{link.startsWith('http') ? link : `http://${link}`}</a></li>
                       ))}
                     </ul>
                   </div>

@@ -18,5 +18,6 @@ export interface IAnsweredQuestion extends IQGeneratedQuestion {
   enhancedExplanation?: string; // From enhanceAnswerWithInternetSearch flow
   additionalSearchLinks?: string[]; // From enhanceAnswerWithInternetSearch flow
   generatedMnemonics?: string[]; // From generateMnemonics flow (can be multiple)
+  imageDataUri?: string | null; // From generateImageForQuestion flow
   timestamp: number;
 }

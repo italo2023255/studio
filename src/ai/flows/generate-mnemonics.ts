@@ -1,7 +1,7 @@
 // src/ai/flows/generate-mnemonics.ts
 'use server';
 /**
- * @fileOverview Generates mnemonic devices, tricks, and memory aids related to legal questions.
+ * @fileOverview Generates mnemonic devices, tricks, and memory aids related to legal questions in Brazilian Portuguese.
  *
  * - generateMnemonics - A function that generates mnemonics for legal questions.
  * - GenerateMnemonicsInput - The input type for the generateMnemonics function.
@@ -23,7 +23,7 @@ export type GenerateMnemonicsInput = z.infer<typeof GenerateMnemonicsInputSchema
 const GenerateMnemonicsOutputSchema = z.object({
   mnemonics: z
     .array(z.string())
-    .describe('An array of mnemonic devices, tricks, and memory aids.'),
+    .describe('An array of mnemonic devices, "macetes", "bizus", and memory aids in Brazilian Portuguese.'),
 });
 export type GenerateMnemonicsOutput = z.infer<typeof GenerateMnemonicsOutputSchema>;
 
@@ -35,16 +35,18 @@ const prompt = ai.definePrompt({
   name: 'generateMnemonicsPrompt',
   input: {schema: GenerateMnemonicsInputSchema},
   output: {schema: GenerateMnemonicsOutputSchema},
-  prompt: `You are an expert in creating mnemonic devices for legal concepts.
+  prompt: `Você é um especialista em criar "macetes" e "bizus" (dispositivos mnemônicos) para conceitos jurídicos em Português do Brasil.
 
-  Given the following legal text, question, and answer, generate a list of mnemonic devices, tricks, and memory aids to help the user remember the information.
+  Dado o seguinte texto legal, pergunta e resposta, gere uma lista de dispositivos mnemônicos, truques e auxílios de memória para ajudar o usuário a lembrar da informação.
 
-  Legal Text: {{{legalText}}}
-  Question: {{{question}}}
-  Answer: {{{answer}}}
+  Texto Legal: {{{legalText}}}
+  Pergunta: {{{question}}}
+  Resposta Correta: {{{answer}}}
 
-  Provide a variety of mnemonics, including acronyms, rhymes, and visual associations. Selectively decide when one mnemonic is more applicable or useful than another depending on the circumstances.
-  Each mnemonic should be concise and easy to remember. Return an array of mnemonics.
+  Forneça uma variedade de mnemônicos, incluindo acrônimos, rimas e associações visuais, se aplicável.
+  Decida seletivamente quando um mnemônico é mais aplicável ou útil do que outro, dependendo das circunstâncias.
+  Cada mnemônico deve ser conciso, fácil de lembrar e em Português do Brasil.
+  Retorne um array de strings contendo os mnemônicos. Se nenhum mnemônico claro ou útil puder ser gerado, retorne um array vazio.
   `,
 });
 
@@ -56,6 +58,10 @@ const generateMnemonicsFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    if (!output) {
+        console.warn('generateMnemonicsFlow: LLM output was null or undefined. Input:', input);
+        return { mnemonics: [] };
+    }
+    return output;
   }
 );
