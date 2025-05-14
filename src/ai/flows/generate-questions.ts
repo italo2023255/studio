@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -40,12 +41,19 @@ const generateQuestionsPrompt = ai.definePrompt({
   output: {schema: GenerateQuestionsOutputSchema},
   prompt: `You are a legal expert who generates multiple-choice questions from legal texts.
 
-  Based on the following legal text, generate multiple-choice questions with 4 answer options, a correct answer, and an explanation.
-  Also generate mnemonic devices and links to external resources when possible.
-  Return a JSON object with a "questions" key, where the value is an array of these question objects. Each question object should conform to the provided output schema.
+Based on the following legal text, generate multiple-choice questions.
+Each question must have:
+1.  A "question" field (string): The multiple-choice question itself.
+2.  An "options" field (array of 4 strings): Four distinct answer choices.
+3.  A "correctAnswerIndex" field (number, 0-3): The 0-based index of the correct option in the "options" array.
+4.  An "explanation" field (string): A clear explanation of why the chosen answer is correct, referencing the provided legal text.
+5.  Optionally, a "mnemonic" field (string): A mnemonic device, trick, or memory aid related to the question.
+6.  Optionally, a "searchLinks" field (array of strings): Links to external resources providing further context.
 
-  Legal Text:
-  {{{legalText}}}`,
+Return a single JSON object with a "questions" key. The value of this key should be an array of question objects, each conforming to the structure described above.
+
+Legal Text:
+{{{legalText}}}`,
 });
 
 const generateQuestionsFlow = ai.defineFlow(
@@ -55,7 +63,23 @@ const generateQuestionsFlow = ai.defineFlow(
     outputSchema: GenerateQuestionsOutputSchema,
   },
   async input => {
-    const {output} = await generateQuestionsPrompt(input);
-    return output!;
+    const result = await generateQuestionsPrompt(input); // Get the full result object
+    const output = result.output; // Access the parsed output
+    const rawText = result.text; // Access the raw text from the LLM
+
+    if (!output) {
+      console.error(
+        'generateQuestionsFlow: LLM output failed to parse or was empty. Input:',
+        input,
+        'Raw LLM response text:',
+        rawText
+      );
+      // Throw an error that can be caught by the client-side try/catch block
+      throw new Error(
+        'A IA falhou ao gerar as questões no formato esperado. Por favor, tente um texto diferente ou tente novamente.'
+      );
+    }
+    return output;
   }
 );
+
