@@ -18,16 +18,16 @@ export function BottomNavigation() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 h-16 border-t bg-background shadow-t-md md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 h-16 border-t bg-background shadow-t-md">
       <div className="mx-auto grid h-full max-w-lg grid-cols-5 font-medium">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link
-              key={item.href} 
+              key={item.href}
               href={item.href}
               className={cn(
-                'group inline-flex flex-col items-center justify-center px-2 py-2 sm:px-3 text-center hover:bg-muted hover:text-primary focus:outline-none focus:bg-muted/80 focus:text-primary',
+                'group inline-flex flex-col items-center justify-center px-2 py-2 text-center hover:bg-muted hover:text-primary focus:outline-none focus:bg-muted/80 focus:text-primary',
                 isActive ? 'text-primary bg-muted/50' : 'text-muted-foreground'
               )}
               aria-current={isActive ? 'page' : undefined}
