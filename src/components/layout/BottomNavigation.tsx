@@ -24,7 +24,7 @@ export function BottomNavigation() {
           const isActive = pathname === item.href;
           return (
             <Link
-              key={item.href} // Using href for key as it's guaranteed unique
+              key={item.href} 
               href={item.href}
               className={cn(
                 'group inline-flex flex-col items-center justify-center px-2 py-2 sm:px-3 text-center hover:bg-muted hover:text-primary focus:outline-none focus:bg-muted/80 focus:text-primary',
