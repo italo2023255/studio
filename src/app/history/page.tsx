@@ -191,13 +191,13 @@ export default function HistoryPage() {
             </div>
           ) : (
             <ScrollArea className="h-[calc(60vh-50px)] sm:h-[60vh]">
-              <div className="space-y-4 pr-4">
-                {filteredHistory.map((item, index) => ( // Added index for Questão #
+              <div className="space-y-4 pr-2 sm:pr-4"> {/* Adjusted pr for smaller screens */}
+                {filteredHistory.map((item, index) => ( 
                   <Card key={item.id} className="hover:shadow-md transition-shadow">
                     <CardHeader>
                       <div className="flex justify-between items-start gap-2">
-                        <CardTitle className="text-lg flex-1 mr-2" title={item.question}>
-                           Questão {filteredHistory.length - index}: {item.question} {/* Numbering in reverse for most recent first */}
+                        <CardTitle className="text-lg flex-1 min-w-0 break-words" title={item.question}>
+                           Questão {filteredHistory.length - index}: {item.question} 
                         </CardTitle>
                         <div className="flex flex-col items-end gap-1">
                             {item.isCorrect !== null && (
@@ -219,14 +219,14 @@ export default function HistoryPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                       <p className="text-sm text-muted-foreground line-clamp-2">
+                       <p className="text-sm text-muted-foreground line-clamp-2 break-words">
                         Sua Resposta: <span className="font-medium text-foreground">{item.userAnswerIndex !== null && item.userAnswerIndex !== undefined && item.options[item.userAnswerIndex] ? item.options[item.userAnswerIndex] : "Não respondida"}</span>
                       </p>
-                       <p className="text-sm text-muted-foreground line-clamp-3 mt-1">
+                       <p className="text-sm text-muted-foreground line-clamp-3 break-words mt-1">
                         Explicação: <span className="font-normal text-foreground">{item.explanation.substring(0,150)}{item.explanation.length > 150 ? "..." : ""}</span>
                       </p>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="flex flex-wrap gap-2">
                       <Button variant="outline" size="sm" onClick={() => handleViewDetails(item)}>
                         <Eye className="mr-2 h-4 w-4" /> Ver Detalhes
                       </Button>

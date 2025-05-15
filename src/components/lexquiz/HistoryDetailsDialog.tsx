@@ -74,9 +74,9 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh]">
+      <DialogContent className="w-full max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl max-h-[90vh]"> {/* Responsive max-width */}
         <DialogHeader>
-          <DialogTitle className="text-2xl flex items-center gap-2">
+          <DialogTitle className="text-xl md:text-2xl flex items-center gap-2">
              <MessageCircle className="text-primary h-6 w-6" /> Detalhes da Questão Respondida
           </DialogTitle>
           <DialogDescription className="flex flex-col sm:flex-row sm:flex-wrap sm:gap-x-2 sm:gap-y-1 text-xs">
@@ -87,11 +87,11 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
             {source && <span className="font-semibold">Fonte: {source}.</span>}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[calc(80vh-200px)] pr-6"> 
+        <ScrollArea className="max-h-[calc(80vh-200px)] pr-2 sm:pr-6"> 
           <div className="space-y-6 py-4">
             <div>
               <h3 className="font-semibold text-lg mb-1">Questão:</h3>
-              <p className="text-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
+              <p className="text-foreground bg-muted p-3 rounded-md whitespace-pre-wrap break-words">
                 {question}
               </p>
             </div>
@@ -108,13 +108,13 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
             {userAnswerIndex !== null && userAnswerIndex !== undefined && options[userAnswerIndex] && (
                  <div>
                     <h3 className="font-semibold text-md">Sua Resposta:</h3>
-                    <p className="text-muted-foreground">{ (questionStyle !== 'cespe' ? String.fromCharCode(65 + userAnswerIndex) + '. ' : '') + options[userAnswerIndex]}</p>
+                    <p className="text-muted-foreground break-words">{ (questionStyle !== 'cespe' ? String.fromCharCode(65 + userAnswerIndex) + '. ' : '') + options[userAnswerIndex]}</p>
                 </div>
             )}
              {correctAnswerIndex !== null && correctAnswerIndex !== undefined && options[correctAnswerIndex] && (
                 <div>
                     <h3 className="font-semibold text-md">Resposta Correta:</h3>
-                    <p className="text-muted-foreground">{(questionStyle !== 'cespe' ? String.fromCharCode(65 + correctAnswerIndex) + '. ' : '') + options[correctAnswerIndex]}</p>
+                    <p className="text-muted-foreground break-words">{(questionStyle !== 'cespe' ? String.fromCharCode(65 + correctAnswerIndex) + '. ' : '') + options[correctAnswerIndex]}</p>
                 </div>
             )}
 
@@ -123,7 +123,7 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
               <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Info className="text-primary"/> Explicação Detalhada:</h3>
               <Alert variant="default" className="bg-muted/50">
                 <Info className="h-4 w-4" />
-                <AlertDescription className="whitespace-pre-wrap text-sm">
+                <AlertDescription className="whitespace-pre-wrap text-sm break-words">
                     {explanation}
                 </AlertDescription>
               </Alert>
@@ -135,7 +135,7 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
              <div>
               <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><FileText className="text-primary"/> Contexto Legal Original Fornecido:</h3>
               <ScrollArea className="h-32 bg-muted/30 p-3 rounded-md border">
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
                     {legalTextContext}
                 </p>
               </ScrollArea>
@@ -148,7 +148,7 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
                 <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400"/> Imagem (Semelhante de Fontes):</h3>
                 {simulatedSourcedImageUrl && simulatedSourcedImageDescription && !noImageResponseRegex.test(simulatedSourcedImageDescription) ? (
                     <>
-                        <p className="text-sm text-muted-foreground mb-2 italic">"{simulatedSourcedImageDescription}"</p>
+                        <p className="text-sm text-muted-foreground mb-2 italic break-words">"{simulatedSourcedImageDescription}"</p>
                         <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 my-2 max-w-xs mx-auto">
                             <NextImage 
                                 src={simulatedSourcedImageUrl} 
@@ -171,7 +171,7 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
                 <div>
                   <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Lightbulb className="text-primary"/> Macetes (Gerados por IA):</h3>
                   <ul className="list-disc list-inside text-muted-foreground space-y-1 pl-5">
-                    {aiGeneratedMnemonics.map((m, i) => <li key={`hist-ai-mne-${i}`}>{m}</li>)}
+                    {aiGeneratedMnemonics.map((m, i) => <li key={`hist-ai-mne-${i}`} className="break-words">{m}</li>)}
                   </ul>
                 </div>
               </>
@@ -182,7 +182,7 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
                 <Separator/>
                 <div>
                     <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Lightbulb className="text-orange-500"/> Exemplo de Macete (Semelhante de Fontes):</h3>
-                    <p className="text-muted-foreground italic">"{simulatedSourcedMnemonic}"</p>
+                    <p className="text-muted-foreground italic break-words">"{simulatedSourcedMnemonic}"</p>
                 </div>
                 </>
             )}

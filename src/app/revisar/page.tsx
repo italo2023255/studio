@@ -223,12 +223,12 @@ export default function ReviewPage() {
             </div>
           ) : (
             <ScrollArea className="h-[calc(60vh-50px)] sm:h-[calc(70vh-120px)]"> 
-              <div className="space-y-4 pr-4">
+              <div className="space-y-4 pr-2 sm:pr-4"> {/* Adjusted pr for smaller screens */}
                 {filteredHistory.map((item, index) => (
                   <Card key={item.id} className="hover:shadow-md transition-shadow">
                     <CardHeader>
                       <div className="flex justify-between items-start gap-2">
-                        <CardTitle className="text-lg flex-1 mr-2" title={item.question}>
+                        <CardTitle className="text-lg flex-1 min-w-0 break-words" title={item.question}>
                           Questão {filteredHistory.length - index}: {item.question}
                         </CardTitle>
                         <div className="flex flex-col items-end gap-1">
@@ -251,7 +251,7 @@ export default function ReviewPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                       <p className="text-sm text-muted-foreground line-clamp-2">
+                       <p className="text-sm text-muted-foreground line-clamp-2 break-words">
                         Sua Resposta: <span className="font-medium text-foreground">{item.userAnswerIndex !== null && item.options[item.userAnswerIndex] ? item.options[item.userAnswerIndex] : "Não respondida"}</span>
                       </p>
                     </CardContent>
@@ -303,16 +303,16 @@ export default function ReviewPage() {
 
       {questionToReview && (
         <Dialog open={!!questionToReview} onOpenChange={() => { setQuestionToReview(null); setShowReviewFeedback(false); setUserReviewAnswer(null); }}>
-          <ReviewDialogContent className="sm:max-w-2xl">
+          <ReviewDialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl"> {/* Responsive max-width */}
             <ReviewDialogHeader>
-              <ReviewDialogTitle className="flex items-center gap-2"><Repeat className="text-primary"/> Refazer Questão</ReviewDialogTitle>
+              <ReviewDialogTitle className="text-xl flex items-center gap-2"><Repeat className="text-primary"/> Refazer Questão</ReviewDialogTitle>
               <ReviewDialogDescription>
                 Matéria: {questionToReview.subject || 'N/A'} | Tópico: {questionToReview.topic || 'N/A'} | Fonte: {questionToReview.source}
               </ReviewDialogDescription>
             </ReviewDialogHeader>
             <ScrollArea className="max-h-[65vh] p-1 pr-3"> 
             <div className="space-y-4 py-4">
-              <p className="text-foreground whitespace-pre-wrap text-base">{questionToReview.question}</p>
+              <p className="text-foreground whitespace-pre-wrap text-base break-words">{questionToReview.question}</p>
               <RadioGroup
                 value={userReviewAnswer?.toString()}
                 onValueChange={(val) => setUserReviewAnswer(parseInt(val))}
@@ -322,7 +322,7 @@ export default function ReviewPage() {
                 {questionToReview.options.map((option, optIndex) => (
                   <div key={optIndex} className="flex items-center space-x-3 p-3 border rounded-md hover:bg-muted/50 has-[input:checked]:bg-primary/10 has-[input:checked]:border-primary">
                     <RadioGroupItem value={optIndex.toString()} id={`review-${questionToReview.id}-opt${optIndex}`} />
-                    <Label htmlFor={`review-${questionToReview.id}-opt${optIndex}`} className="font-normal cursor-pointer flex-1">
+                    <Label htmlFor={`review-${questionToReview.id}-opt${optIndex}`} className="font-normal cursor-pointer flex-1 break-words"> {/* Added break-words */}
                         {questionToReview.questionStyle !== 'cespe' ? String.fromCharCode(65 + optIndex) + ') ' : ''}
                         {option}
                     </Label>
@@ -353,7 +353,7 @@ export default function ReviewPage() {
                   <div>
                     <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><Info className="text-primary h-5 w-5"/> Gabarito e Explicação</h4>
                      <Alert variant="default" className="bg-muted/50">
-                        <ReviewAlertDescription className="whitespace-pre-wrap text-sm">{questionToReview.explanation}</ReviewAlertDescription>
+                        <ReviewAlertDescription className="whitespace-pre-wrap text-sm break-words">{questionToReview.explanation}</ReviewAlertDescription>
                     </Alert>
                   </div>
                   
@@ -371,7 +371,7 @@ export default function ReviewPage() {
                   {questionToReview.simulatedSourcedMnemonic && (
                       <div>
                           <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><Lightbulb className="text-orange-500 h-5 w-5"/> Exemplo de Macete (Semelhante de Fontes)</h4>
-                          <p className="text-muted-foreground italic text-sm">"{questionToReview.simulatedSourcedMnemonic}"</p>
+                          <p className="text-muted-foreground italic text-sm break-words">"{questionToReview.simulatedSourcedMnemonic}"</p>
                       </div>
                   )}
                   
@@ -379,7 +379,7 @@ export default function ReviewPage() {
                       <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400 h-5 w-5"/> Imagem (Semelhante de Fontes)</h4>
                       {questionToReview.simulatedSourcedImageUrl && questionToReview.simulatedSourcedImageDescription && !noImageResponseRegex.test(questionToReview.simulatedSourcedImageDescription) ? (
                           <>
-                              <p className="text-sm text-muted-foreground mb-1 italic">"{questionToReview.simulatedSourcedImageDescription}"</p>
+                              <p className="text-sm text-muted-foreground mb-1 italic break-words">"{questionToReview.simulatedSourcedImageDescription}"</p>
                               <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 max-w-xs mx-auto">
                                   <Image 
                                       src={questionToReview.simulatedSourcedImageUrl} 
