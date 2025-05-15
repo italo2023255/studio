@@ -1,7 +1,8 @@
+
 import Link from 'next/link';
 import { LogoIcon } from '@/components/icons/LogoIcon';
 import { Button } from '@/components/ui/button';
-import { History, Home, MessageSquareText } from 'lucide-react';
+import { History, Home, MessageSquareText, FileType } from 'lucide-react';
 
 export function Header() {
   return (
@@ -13,11 +14,17 @@ export function Header() {
             LexQuiz AI
           </span>
         </Link>
-        <nav className="flex items-center gap-2 sm:gap-4">
+        <nav className="flex items-center gap-1 sm:gap-2">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/" className="flex items-center gap-1">
               <Home className="h-4 w-4" />
               <span className="hidden sm:inline">Início</span>
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/gerar-com-pdf" className="flex items-center gap-1">
+              <FileType className="h-4 w-4" />
+              <span className="hidden sm:inline">Gerar por PDF</span>
             </Link>
           </Button>
           <Button variant="ghost" size="sm" asChild>
@@ -37,3 +44,5 @@ export function Header() {
     </header>
   );
 }
+
+    
