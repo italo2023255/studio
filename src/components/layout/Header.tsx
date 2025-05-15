@@ -14,7 +14,7 @@ export function Header() {
             DantasAI
           </span>
         </Link>
-        <nav className="flex items-center gap-1 sm:gap-2">
+        <nav className="flex items-center gap-2 sm:gap-3">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/" className="flex items-center gap-1">
               <Home className="h-4 w-4" />
@@ -39,7 +39,7 @@ export function Header() {
               <span className="hidden sm:inline">Desempenho</span>
             </Link>
           </Button>
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="outline" size="sm" asChild>
             <Link href="/feedback" className="flex items-center gap-1">
               <MessageSquareText className="h-4 w-4" />
               <span className="hidden sm:inline">Feedback</span>
@@ -50,4 +50,3 @@ export function Header() {
     </header>
   );
 }
-    
