@@ -15,9 +15,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'; // Added Checkbox
 import { useToast } from '@/hooks/use-toast';
 import { generateQuestions } from '@/ai/flows/generate-questions';
-import type { IQGeneratedQuestion, QuestionStyle, IAnsweredQuestion } from '@/types';
+import type { IQGeneratedQuestion, QuestionStyle, IAnsweredQuestion, IExternalLink } from '@/types';
 import { addAnswerToHistory } from '@/lib/localStorage';
-import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, Send, MessageCircleQuestion, Edit3, Settings2, ImageIcon as ImageIconLucide, RotateCcw, CheckCircle, XCircle, ListChecks, FileQuestion as FileQuestionIcon, Youtube, BookOpen, Tag, SearchCheck } from 'lucide-react';
+import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, Send, MessageCircleQuestion, Edit3, Settings2, ImageIcon as ImageIconLucide, RotateCcw, CheckCircle, XCircle, ListChecks, FileQuestion as FileQuestionIcon, Youtube, Instagram, Facebook, BookOpen, Tag, SearchCheck } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ClientOnly } from '@/components/ClientOnly';
@@ -124,15 +124,6 @@ export default function HomePage() {
     setIsLoading(false);
   };
 
-  const isYoutubeLink = (link: string) => {
-    try {
-      const url = new URL(link);
-      return url.hostname === 'www.youtube.com' || url.hostname === 'youtube.com' || url.hostname === 'youtu.be';
-    } catch (e) {
-      return false;
-    }
-  };
-
   const generateAiHint = (description?: string): string => {
     const defaultHint = "legal"; 
     if (!description || description.trim() === "" || /nenhuma imagem|não encontrada|não aplicável/i.test(description.toLowerCase())) {
@@ -143,6 +134,12 @@ export default function HomePage() {
   };
   
   const noImageResponseRegex = /nenhuma imagem|não encontrada|não aplicável/i;
+
+  const videoPlatforms: Array<{ type: IExternalLink['type']; name: string; icon: React.ElementType }> = [
+    { type: 'youtube_video', name: 'YouTube', icon: Youtube },
+    { type: 'instagram_video', name: 'Instagram', icon: Instagram },
+    { type: 'facebook_video', name: 'Facebook', icon: Facebook },
+  ];
 
   return (
     <div className="space-y-8">
@@ -377,19 +374,47 @@ export default function HomePage() {
                             )}
                           </div>
                           
-                          {q.externalSearchLinks && q.externalSearchLinks.length > 0 && (
+                          {(q.externalSearchLinks && q.externalSearchLinks.length > 0) || videoPlatforms.some(vp => q.externalSearchLinks?.some(link => link.type === vp.type)) ? (
                             <div>
                               <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><LinkIcon className="text-primary h-5 w-5"/> Links Úteis (Pesquisa Semelhante)</h4>
-                              <ul className="list-disc list-inside text-muted-foreground space-y-1 pl-5 text-sm">
-                                {q.externalSearchLinks.map((link, idx) => (
-                                  <li key={`ext-link-${q.id}-${idx}`} className="flex items-center gap-1">
-                                    {isYoutubeLink(link) && <Youtube className="h-4 w-4 text-red-600" />}
-                                    <a href={link.startsWith('http') ? link : `http://${link}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate" title={link}>
-                                      {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+                              <ul className="list-disc list-inside space-y-1 pl-5 text-sm">
+                                {videoPlatforms.map(platform => {
+                                  const platformLinks = q.externalSearchLinks?.filter(link => link.type === platform.type);
+                                  if (platformLinks && platformLinks.length > 0) {
+                                    return platformLinks.map((link, idx) => (
+                                      <li key={`vid-link-${platform.type}-${q.id}-${idx}`} className="flex items-center gap-1">
+                                        <platform.icon className="h-4 w-4 text-accent" />
+                                        <a href={link.link.startsWith('http') ? link.link : `http://${link.link}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate" title={link.link}>
+                                          {link.title || link.link}
+                                        </a>
+                                      </li>
+                                    ));
+                                  }
+                                  return (
+                                    <li key={`vid-link-nf-${platform.type}-${q.id}`} className="flex items-center gap-1 text-muted-foreground">
+                                      <platform.icon className="h-4 w-4" /> {platform.name}: Não encontrado
+                                    </li>
+                                  );
+                                })}
+                                {q.externalSearchLinks?.filter(link => !videoPlatforms.some(vp => vp.type === link.type)).map((link, idx) => (
+                                  <li key={`other-link-${q.id}-${idx}`} className="flex items-center gap-1">
+                                    <LinkIcon className="h-4 w-4 text-accent" />
+                                    <a href={link.link.startsWith('http') ? link.link : `http://${link.link}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate" title={link.link}>
+                                      {link.title || link.link}
                                     </a>
                                   </li>
                                 ))}
                               </ul>
+                            </div>
+                          ) : (
+                             <div>
+                                <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><LinkIcon className="text-primary h-5 w-5"/> Links Úteis (Pesquisa Semelhante)</h4>
+                                {videoPlatforms.map(platform => (
+                                    <p key={`vid-link-nf-all-${platform.type}-${q.id}`} className="flex items-center gap-1 text-sm text-muted-foreground pl-5">
+                                      <platform.icon className="h-4 w-4" /> {platform.name}: Não encontrado
+                                    </p>
+                                ))}
+                                <p className="text-sm text-muted-foreground pl-5">Outros links: Não encontrados</p>
                             </div>
                           )}
                         </AccordionContent>

@@ -3,6 +3,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
+import type { IExternalLink } from '@/types'; // Import IExternalLink
 
 const EnhanceAnswerWithInternetSearchInputSchema = z.object({
   question: z.string().describe('The original user question or quiz question text.'),
@@ -13,9 +14,16 @@ const EnhanceAnswerWithInternetSearchInputSchema = z.object({
 export type EnhanceAnswerWithInternetSearchInput =
   z.infer<typeof EnhanceAnswerWithInternetSearchInputSchema>;
 
+const LinkObjectSchema = z.object({
+    title: z.string().describe("Title of the search result."),
+    link: z.string().url().describe("URL of the search result."),
+    snippet: z.string().optional().describe("A brief summary of the search result content."),
+    type: z.enum(["jurisprudence", "article", "video", "forum_discussion", "youtube_video", "instagram_video", "facebook_video", "other"]).describe("Type of content. Use specific video types for YouTube, Instagram, Facebook.")
+});
+
 const EnhanceAnswerWithInternetSearchOutputSchema = z.object({
   enhancedAnswer: z.string().describe('The enhanced answer/explanation incorporating internet search results, legal reasoning, and precedents found. This should elaborate on the initial answer. For quiz questions, this might just be the original explanation if no further enhancement is applicable.'),
-  searchLinks: z.array(z.string().url()).describe('An array of URLs to relevant jurisprudence, legal articles, or explanatory videos (e.g., YouTube).'),
+  searchLinks: z.array(LinkObjectSchema).describe('An array of structured link objects to relevant jurisprudence, legal articles, or explanatory videos (YouTube, Instagram, Facebook).'),
   simulatedSourcedImageDescription: z.string().optional().describe("A textual description of an illustrative image one might find on a legal forum or contest preparation site related to the key concept or legal text. E.g., 'Diagram illustrating the stages of a criminal trial.' If no relevant image can be conceptualized, this should be explicitly stated (e.g., 'Nenhuma imagem conceitual relevante para este tema.') or left empty."),
   simulatedSourcedImageUrl: z.string().url().optional().describe("A placeholder URL for the described image (e.g., using placehold.co). Should only be provided if a relevant, positive image description exists. Leave empty if no relevant image description."),
   simulatedSourcedMnemonic: z.string().optional().describe("A mnemonic or memory aid as if found on a specialized legal study site or forum, related to the key concept or legal text. E.g., 'Para lembrar os requisitos da legítima defesa: P.U.M.A. (Proporcionalidade, Utilização moderada dos meios, Moderação, Agressão injusta)'"),
@@ -32,20 +40,13 @@ export async function enhanceAnswerWithInternetSearch(
 const searchInternetTool = ai.defineTool(
   {
     name: 'searchInternetTool',
-    description: 'Searches the internet for relevant legal information: jurisprudence, articles, explanatory videos (especially from YouTube), and common mnemonics or image concepts from study sites related to the provided legal question, answer, and text.',
+    description: 'Searches the internet for relevant legal information: jurisprudence, articles, explanatory videos (especially from YouTube, Instagram, Facebook), and common mnemonics or image concepts from study sites related to the provided legal question, answer, and text.',
     inputSchema: z.object({
       query: z.string().describe('A targeted search query based on the legal question, answer, and key concept. Should aim to find corroborating information, deeper insights, and examples of study aids.'),
-      keyConcept: z.string().optional().describe('The key legal concept for focusing search on study aids like mnemonics and image descriptions, and video content.'),
+      keyConcept: z.string().optional().describe('The key legal concept for focusing search on study aids like mnemonics and image descriptions, and video content from YouTube, Instagram, and Facebook.'),
     }),
     outputSchema: z.object({
-        foundLinks: z.array(
-            z.object({
-                title: z.string().describe("Title of the search result."),
-                link: z.string().url().describe("URL of the search result."),
-                snippet: z.string().describe("A brief summary of the search result content."),
-                type: z.enum(["jurisprudence", "article", "video", "forum_discussion", "youtube_video", "other"]).describe("Type of content. Use 'youtube_video' for YouTube links.")
-            })
-        ).describe('A list of relevant search results, including YouTube videos if found.'),
+        foundLinks: z.array(LinkObjectSchema).describe('A list of relevant search results, including YouTube, Instagram, and Facebook videos if found. Ensure the "type" field is correctly set.'),
         exampleImageDescription: z.string().optional().describe("Example description of a relevant conceptual image found on a study site (e.g., 'Fluxograma do processo de inventário'). If no relevant image can be conceptualized, return an empty string or a phrase like 'Nenhuma imagem relevante.'"),
         exampleMnemonic: z.string().optional().describe("Example mnemonic found on a study site (e.g., 'Para as excludentes de ilicitude: LEET (Legítima Defesa, Estrito Cumprimento do Dever Legal, Exercício Regular de Direito, Estado de Necessidade)')."),
     }),
@@ -54,30 +55,47 @@ const searchInternetTool = ai.defineTool(
     // Placeholder implementation for internet search.
     console.log(`Simulating internet search for: ${toolInput.query} (Concept: ${toolInput.keyConcept})`);
     const imageDesc = toolInput.keyConcept ? `Ilustração conceitual sobre ${toolInput.keyConcept}, comum em materiais de estudo.` : `Nenhuma imagem conceitual relevante para ${toolInput.query}.`;
-    const mnemonicText = toolInput.keyConcept ? `MACETE para ${toolInput.keyConcept}: Lembre-se de 'ABC' (Algo Bem Conceitual).` : undefined;
+    const mnemonicText = toolInput.keyConcept ? `MACETE para ${toolInput.keyConcept}: Lembre-se de 'ABCDE' (Algo Bem Conceitual Detalhado Explicado).` : undefined;
     
-    const links = [
+    const links: IExternalLink[] = [
         {
-            title: `Jurisprudência sobre: ${toolInput.query}`,
-            link: `https://juris.example.com/search?q=${encodeURIComponent(toolInput.query)}`,
-            snippet: `Análise jurisprudencial detalhada sobre ${toolInput.query}.`,
-            type: "jurisprudence" as const
+            title: `Jurisprudência STF sobre: ${toolInput.query}`,
+            link: `https://juris.stf.jus.br/search?q=${encodeURIComponent(toolInput.query)}`,
+            snippet: `Decisões do STF relacionadas a ${toolInput.query}.`,
+            type: "jurisprudence"
         },
         {
-            title: `Artigo Explicativo: Entendendo ${toolInput.query}`,
-            link: `https://legalblog.com/artigo/${encodeURIComponent(toolInput.query)}`,
-            snippet: `Artigo de blog desmistificando ${toolInput.query}.`,
-            type: "article" as const
+            title: `Artigo Explicativo Completo: Entendendo ${toolInput.query}`,
+            link: `https://direitocomdesenho.com/artigo/${encodeURIComponent(toolInput.query.replace(/\s+/g, '-').toLowerCase())}`,
+            snippet: `Artigo de blog aprofundado sobre ${toolInput.query}.`,
+            type: "article"
         },
     ];
 
     if (toolInput.keyConcept) {
         links.push({
-            title: `Vídeo Aula YouTube: ${toolInput.keyConcept}`,
-            link: `https://youtube.com/results?search_query=${encodeURIComponent(toolInput.keyConcept + " direito")}`,
+            title: `Vídeo Aula Essencial no YouTube: ${toolInput.keyConcept}`,
+            link: `https://www.youtube.com/results?search_query=${encodeURIComponent(toolInput.keyConcept + " aula direito")}`,
             snippet: `Vídeo aula no YouTube sobre ${toolInput.keyConcept}.`,
-            type: "youtube_video" as const
+            type: "youtube_video"
         });
+        // Simulate finding (or not finding) Instagram/Facebook links
+        if (Math.random() > 0.6) {
+             links.push({
+                title: `Dica Rápida no Instagram: ${toolInput.keyConcept}`,
+                link: `https://www.instagram.com/explore/tags/${encodeURIComponent(toolInput.keyConcept.replace(/\s+/g, ''))}/`,
+                snippet: `Posts e reels no Instagram sobre ${toolInput.keyConcept}.`,
+                type: "instagram_video"
+            });
+        }
+         if (Math.random() > 0.7) {
+            links.push({
+                title: `Discussão no Facebook: ${toolInput.keyConcept}`,
+                link: `https://www.facebook.com/search/top/?q=${encodeURIComponent(toolInput.keyConcept + " direito")}`,
+                snippet: `Grupos e posts no Facebook sobre ${toolInput.keyConcept}.`,
+                type: "facebook_video" 
+            });
+        }
     }
     
     return {
@@ -99,14 +117,14 @@ const prompt = ai.definePrompt({
      Concentre a busca em:
      - Jurisprudência relevante.
      - Artigos legais ou de blogs que aprofundem o tema.
-     - Links para vídeos explicativos, PRIORIZANDO vídeos do YouTube se disponíveis.
+     - Links para vídeos explicativos, PRIORIZANDO vídeos do YouTube, Instagram e Facebook, se disponíveis. Certifique-se de que o campo 'type' no objeto de link retornado pela ferramenta seja 'youtube_video', 'instagram_video', ou 'facebook_video' para esses casos.
      - Com base no 'keyConcept', simule a busca por descrições de imagens ilustrativas e mnemônicos comuns em sites de estudo para concursos ou fóruns jurídicos.
   2. Analisar os resultados da busca.
-  3. Formular uma 'enhancedAnswer' que integre as descobertas mais relevantes, se aplicável, ou mantenha a resposta inicial se for suficiente (especialmente para explicações de questões de concurso que já são baseadas na 'letra da lei').
-  4. Compilar uma lista de 'searchLinks' com os URLs mais úteis (jurisprudência, artigos, vídeos do YouTube).
-  5. Fornecer 'simulatedSourcedImageDescription': uma descrição textual de uma imagem ilustrativa RELEVANTE (como se encontrada em um site de estudos). Ex: "Fluxograma do recurso especial." Se nenhuma imagem conceitual relevante for aplicável ou puder ser descrita, retorne uma string vazia ou uma frase como 'Nenhuma imagem conceitual relevante para este tema.'
-  6. Fornecer 'simulatedSourcedImageUrl': um URL de placeholder para esta imagem descrita (use https://placehold.co/600x400.png). Forneça este URL APENAS SE uma 'simulatedSourcedImageDescription' relevante e positiva foi gerada. Caso contrário, retorne uma string vazia ou deixe nulo.
-  7. Fornecer 'simulatedSourcedMnemonic': um mnemônico útil (como se encontrado em um fórum ou site especializado), com uma breve indicação de sua "origem" conceitual. Ex: "MACETE de cursinho para os requisitos da petição inicial: Endereçamento, Qualificação, Fatos, Direito, Pedido (EQFDP)."
+  3. Formular uma 'enhancedAnswer' que integre as descobertas mais relevantes, se aplicável, ou mantenha a resposta inicial se for suficiente.
+  4. Compilar uma lista de 'searchLinks' (objetos com title, link, snippet, type) com os URLs mais úteis (jurisprudência, artigos, vídeos do YouTube, Instagram, Facebook). Preserve o tipo de link fornecido pela ferramenta.
+  5. Fornecer 'simulatedSourcedImageDescription': uma descrição textual de uma imagem ilustrativa RELEVANTE. Se nenhuma imagem conceitual relevante for aplicável, retorne uma string vazia ou 'Nenhuma imagem conceitual relevante para este tema.'
+  6. Fornecer 'simulatedSourcedImageUrl': um URL de placeholder. Forneça APENAS SE uma 'simulatedSourcedImageDescription' relevante e positiva foi gerada. Caso contrário, string vazia ou nulo.
+  7. Fornecer 'simulatedSourcedMnemonic': um mnemônico útil simulado.
 
   Contexto Fornecido:
   - Pergunta/Questão: {{{question}}}
@@ -115,14 +133,7 @@ const prompt = ai.definePrompt({
   - Conceito Chave: {{{keyConcept}}}
 
   Instruções para o output (JSON):
-  - 'enhancedAnswer': Mantenha ou elabore a resposta.
-  - 'searchLinks': Array de URLs (incluir YouTube se pertinente).
-  - 'simulatedSourcedImageDescription': Descrição da imagem simulada. Se não houver, indicar explicitamente ou retornar string vazia.
-  - 'simulatedSourcedImageUrl': URL placeholder para a imagem. Somente se houver descrição relevante. Caso contrário, string vazia ou nulo.
-  - 'simulatedSourcedMnemonic': Mnemônico simulado.
-
-  Seja preciso e referencie as fontes (tipos de fontes) conceitualmente ao descrever imagens e mnemônicos simulados.
-  Priorize links do YouTube para vídeos, se encontrados.
+  - 'searchLinks': Array de objetos {title, link, snippet, type}. Inclua vídeos do YouTube, Instagram, Facebook se pertinentes, com o 'type' correto.
   `,
 });
 
@@ -150,6 +161,10 @@ const enhanceAnswerWithInternetSearchFlow = ai.defineFlow(
         simulatedSourcedImageUrl: undefined, 
         simulatedSourcedMnemonic: "Nenhum mnemônico adicional encontrado."
       };
+    }
+
+    if (!output.searchLinks) { // Ensure searchLinks is at least an empty array
+        output.searchLinks = [];
     }
 
     // Ensure URL is cleared if description is effectively absent or negative

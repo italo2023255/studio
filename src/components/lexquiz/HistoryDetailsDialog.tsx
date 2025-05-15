@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { IAnsweredQuestion } from '@/types';
+import type { IAnsweredQuestion, IExternalLink } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Lightbulb, Link as LinkIcon, Info, FileText, Image as ImageIconLucide, MessageCircle, CheckCircle, XCircle, Youtube, BookOpen, Tag } from 'lucide-react';
+import { Lightbulb, Link as LinkIcon, Info, FileText, Image as ImageIconLucide, MessageCircle, CheckCircle, XCircle, Youtube, Instagram, Facebook, BookOpen, Tag } from 'lucide-react';
 import NextImage from 'next/image'; 
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -55,15 +55,6 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
     return 'Desconhecido';
   };
 
-  const isYoutubeLink = (link: string) => {
-    try {
-      const url = new URL(link);
-      return url.hostname === 'www.youtube.com' || url.hostname === 'youtube.com' || url.hostname === 'youtu.be';
-    } catch (e) {
-      return false;
-    }
-  };
-
   const generateAiHint = (description?: string): string => {
     const defaultHint = "legal"; 
     if (!description || description.trim() === "" || /nenhuma imagem|não encontrada|não aplicável/i.test(description.toLowerCase())) {
@@ -75,6 +66,12 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
 
   const noImageResponseRegex = /nenhuma imagem|não encontrada|não aplicável/i;
 
+  const videoPlatforms: Array<{ type: IExternalLink['type']; name: string; icon: React.ElementType }> = [
+    { type: 'youtube_video', name: 'YouTube', icon: Youtube },
+    { type: 'instagram_video', name: 'Instagram', icon: Instagram },
+    { type: 'facebook_video', name: 'Facebook', icon: Facebook },
+  ];
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh]">
@@ -85,8 +82,8 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
           <DialogDescription className="flex flex-col sm:flex-row sm:flex-wrap sm:gap-x-2 sm:gap-y-1 text-xs">
             <span>Respondido em {new Date(timestamp).toLocaleString('pt-BR')}.</span>
             {questionStyle && <span>Estilo: {getQuestionStyleLabel(questionStyle)}.</span>}
-            {subject && <span>Matéria: {subject}.</span>}
-            {topic && <span>Tópico: {topic}.</span>}
+            {subject && <span className="flex items-center gap-1"><BookOpen className="h-3 w-3"/> {subject}.</span>}
+            {topic && <span className="flex items-center gap-1"><Tag className="h-3 w-3"/> {topic}.</span>}
             {source && <span className="font-semibold">Fonte: {source}.</span>}
           </DialogDescription>
         </DialogHeader>
@@ -148,7 +145,7 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
 
             <Separator/>
             <div>
-                <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400"/> Imagem (Simulada de Fontes):</h3>
+                <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400"/> Imagem (Semelhante de Fontes):</h3>
                 {simulatedSourcedImageUrl && simulatedSourcedImageDescription && !noImageResponseRegex.test(simulatedSourcedImageDescription) ? (
                     <>
                         <p className="text-sm text-muted-foreground mb-2 italic">"{simulatedSourcedImageDescription}"</p>
@@ -184,29 +181,60 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
                 <>
                 <Separator/>
                 <div>
-                    <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Lightbulb className="text-orange-500"/> Exemplo de Macete (Simulado de Fontes):</h3>
+                    <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Lightbulb className="text-orange-500"/> Exemplo de Macete (Semelhante de Fontes):</h3>
                     <p className="text-muted-foreground italic">"{simulatedSourcedMnemonic}"</p>
                 </div>
                 </>
             )}
 
-            {externalSearchLinks && externalSearchLinks.length > 0 && (
-               <>
+            {(externalSearchLinks && externalSearchLinks.length > 0) || videoPlatforms.some(vp => externalSearchLinks?.some(link => link.type === vp.type)) ? (
+                <>
                 <Separator/>
                 <div>
-                  <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><LinkIcon className="text-primary"/> Links Úteis (Pesquisa Simulada):</h3>
-                  <ul className="list-disc list-inside text-muted-foreground space-y-1 pl-5">
-                    {externalSearchLinks.map((link, i) => (
-                      <li key={`hist-ext-link-${i}`} className="flex items-center gap-1">
-                        {isYoutubeLink(link) && <Youtube className="h-4 w-4 text-red-500" />}
-                        <a href={link.startsWith('http') ? link : `http://${link}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate" title={link}>
-                            {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+                  <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><LinkIcon className="text-primary"/> Links Úteis (Pesquisa Semelhante):</h3>
+                  <ul className="list-disc list-inside space-y-1 pl-5 text-sm">
+                    {videoPlatforms.map(platform => {
+                        const platformLinks = externalSearchLinks?.filter(link => link.type === platform.type);
+                        if (platformLinks && platformLinks.length > 0) {
+                        return platformLinks.map((link, idx) => (
+                            <li key={`hist-vid-link-${platform.type}-${idx}`} className="flex items-center gap-1">
+                            <platform.icon className="h-4 w-4 text-accent" />
+                            <a href={link.link.startsWith('http') ? link.link : `http://${link.link}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate" title={link.link}>
+                                {link.title || link.link}
+                            </a>
+                            </li>
+                        ));
+                        }
+                        return (
+                        <li key={`hist-vid-link-nf-${platform.type}`} className="flex items-center gap-1 text-muted-foreground">
+                            <platform.icon className="h-4 w-4" /> {platform.name}: Não encontrado
+                        </li>
+                        );
+                    })}
+                    {externalSearchLinks?.filter(link => !videoPlatforms.some(vp => vp.type === link.type)).map((link, idx) => (
+                        <li key={`hist-other-link-${idx}`} className="flex items-center gap-1">
+                        <LinkIcon className="h-4 w-4 text-accent" />
+                        <a href={link.link.startsWith('http') ? link.link : `http://${link.link}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate" title={link.link}>
+                            {link.title || link.link}
                         </a>
-                      </li>
+                        </li>
                     ))}
                   </ul>
                 </div>
-              </>
+                </>
+            ) : (
+                <>
+                <Separator/>
+                <div>
+                    <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><LinkIcon className="text-primary"/> Links Úteis (Pesquisa Semelhante):</h3>
+                    {videoPlatforms.map(platform => (
+                        <p key={`hist-vid-link-nf-all-${platform.type}`} className="flex items-center gap-1 text-sm text-muted-foreground pl-5">
+                            <platform.icon className="h-4 w-4" /> {platform.name}: Não encontrado
+                        </p>
+                    ))}
+                    <p className="text-sm text-muted-foreground pl-5">Outros links: Não encontrados</p>
+                </div>
+                </>
             )}
           </div>
         </ScrollArea>

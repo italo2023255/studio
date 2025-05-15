@@ -6,9 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getHistory, saveHistory } from '@/lib/localStorage';
-import type { IAnsweredQuestion } from '@/types';
+import type { IAnsweredQuestion, IExternalLink } from '@/types';
 import { HistoryDetailsDialog } from '@/components/lexquiz/HistoryDetailsDialog';
-import { Eye, ListChecks, Trash2, RefreshCw, CheckCircle, XCircle, Filter, BookOpen, Tag, AlertTriangle, Repeat, RotateCcw, ImageIcon as ImageIconLucide, Info, Link as LinkIcon, Youtube, Lightbulb } from 'lucide-react';
+import { Eye, ListChecks, Trash2, RefreshCw, CheckCircle, XCircle, Filter, BookOpen, Tag, AlertTriangle, Repeat, RotateCcw, ImageIcon as ImageIconLucide, Info, Link as LinkIcon, Youtube, Instagram, Facebook, Lightbulb } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -129,16 +129,13 @@ export default function ReviewPage() {
     return words.slice(0, 2).join(' ') || defaultHint;
   };
   
-  const isYoutubeLink = (link: string) => {
-    try {
-      const url = new URL(link);
-      return url.hostname === 'www.youtube.com' || url.hostname === 'youtube.com' || url.hostname === 'youtu.be';
-    } catch (e) {
-      return false;
-    }
-  };
-
   const noImageResponseRegex = /nenhuma imagem|não encontrada|não aplicável/i;
+
+  const videoPlatforms: Array<{ type: IExternalLink['type']; name: string; icon: React.ElementType }> = [
+    { type: 'youtube_video', name: 'YouTube', icon: Youtube },
+    { type: 'instagram_video', name: 'Instagram', icon: Instagram },
+    { type: 'facebook_video', name: 'Facebook', icon: Facebook },
+  ];
 
 
   if (!isMounted) {
@@ -373,13 +370,13 @@ export default function ReviewPage() {
 
                   {questionToReview.simulatedSourcedMnemonic && (
                       <div>
-                          <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><Lightbulb className="text-orange-500 h-5 w-5"/> Exemplo de Macete (Simulado de Fontes)</h4>
+                          <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><Lightbulb className="text-orange-500 h-5 w-5"/> Exemplo de Macete (Semelhante de Fontes)</h4>
                           <p className="text-muted-foreground italic text-sm">"{questionToReview.simulatedSourcedMnemonic}"</p>
                       </div>
                   )}
                   
                   <div>
-                      <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400 h-5 w-5"/> Imagem (Simulada de Fontes)</h4>
+                      <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400 h-5 w-5"/> Imagem (Semelhante de Fontes)</h4>
                       {questionToReview.simulatedSourcedImageUrl && questionToReview.simulatedSourcedImageDescription && !noImageResponseRegex.test(questionToReview.simulatedSourcedImageDescription) ? (
                           <>
                               <p className="text-sm text-muted-foreground mb-1 italic">"{questionToReview.simulatedSourcedImageDescription}"</p>
@@ -399,19 +396,47 @@ export default function ReviewPage() {
                       )}
                   </div>
                   
-                  {questionToReview.externalSearchLinks && questionToReview.externalSearchLinks.length > 0 && (
+                  {(questionToReview.externalSearchLinks && questionToReview.externalSearchLinks.length > 0) || videoPlatforms.some(vp => questionToReview.externalSearchLinks?.some(link => link.type === vp.type)) ? (
                     <div>
-                      <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><LinkIcon className="text-primary h-5 w-5"/> Links Úteis (Pesquisa Simulada)</h4>
-                      <ul className="list-disc list-inside text-muted-foreground space-y-1 pl-5 text-sm">
-                        {questionToReview.externalSearchLinks.map((link, idx) => (
-                          <li key={`ext-link-rev-${questionToReview.id}-${idx}`} className="flex items-center gap-1">
-                            {isYoutubeLink(link) && <Youtube className="h-4 w-4 text-red-600" />}
-                            <a href={link.startsWith('http') ? link : `http://${link}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate" title={link}>
-                              {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+                      <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><LinkIcon className="text-primary h-5 w-5"/> Links Úteis (Pesquisa Semelhante)</h4>
+                      <ul className="list-disc list-inside space-y-1 pl-5 text-sm">
+                        {videoPlatforms.map(platform => {
+                          const platformLinks = questionToReview.externalSearchLinks?.filter(link => link.type === platform.type);
+                          if (platformLinks && platformLinks.length > 0) {
+                            return platformLinks.map((link, idx) => (
+                              <li key={`rev-vid-link-${platform.type}-${questionToReview.id}-${idx}`} className="flex items-center gap-1">
+                                <platform.icon className="h-4 w-4 text-accent" />
+                                <a href={link.link.startsWith('http') ? link.link : `http://${link.link}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate" title={link.link}>
+                                  {link.title || link.link}
+                                </a>
+                              </li>
+                            ));
+                          }
+                          return (
+                            <li key={`rev-vid-link-nf-${platform.type}-${questionToReview.id}`} className="flex items-center gap-1 text-muted-foreground">
+                              <platform.icon className="h-4 w-4" /> {platform.name}: Não encontrado
+                            </li>
+                          );
+                        })}
+                        {questionToReview.externalSearchLinks?.filter(link => !videoPlatforms.some(vp => vp.type === link.type)).map((link, idx) => (
+                          <li key={`rev-other-link-${questionToReview.id}-${idx}`} className="flex items-center gap-1">
+                            <LinkIcon className="h-4 w-4 text-accent" />
+                            <a href={link.link.startsWith('http') ? link.link : `http://${link.link}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate" title={link.link}>
+                              {link.title || link.link}
                             </a>
                           </li>
                         ))}
                       </ul>
+                    </div>
+                  ) : (
+                    <div>
+                        <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><LinkIcon className="text-primary h-5 w-5"/> Links Úteis (Pesquisa Semelhante)</h4>
+                        {videoPlatforms.map(platform => (
+                            <p key={`rev-vid-link-nf-all-${platform.type}-${questionToReview.id}`} className="flex items-center gap-1 text-sm text-muted-foreground pl-5">
+                                <platform.icon className="h-4 w-4" /> {platform.name}: Não encontrado
+                            </p>
+                        ))}
+                        <p className="text-sm text-muted-foreground pl-5">Outros links: Não encontrados</p>
                     </div>
                   )}
                 </div>
