@@ -16,6 +16,8 @@ import { Separator } from '@/components/ui/separator';
 import { Lightbulb, Link as LinkIcon, Info, FileText, Image as ImageIconLucide, MessageCircle, CheckCircle, XCircle, Youtube, BookOpen, Tag } from 'lucide-react';
 import NextImage from 'next/image'; 
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
 
 interface HistoryDetailsDialogProps {
   isOpen: boolean;
@@ -32,8 +34,9 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
     correctAnswerIndex,
     explanation,
     questionStyle,
-    subject, // Added subject
-    topic,   // Added topic
+    subject, 
+    topic,   
+    source, // Added source
     aiGeneratedMnemonics,
     externalSearchLinks,
     simulatedSourcedImageDescription,
@@ -45,7 +48,7 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
     timestamp,
   } = answeredQuestion;
 
-  const getQuestionStyleLabel = (style: IAnsweredQuestion['questionStyle']) => {
+  const getQuestionStyleLabel = (style?: IAnsweredQuestion['questionStyle']) => {
     if (style === 'cespe') return 'Certo/Errado';
     if (style === 'mcq4') return 'Múltipla Escolha (4 opções)';
     if (style === 'mcq5') return 'Múltipla Escolha (5 opções)';
@@ -73,14 +76,15 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
           <DialogTitle className="text-2xl flex items-center gap-2">
              <MessageCircle className="text-primary h-6 w-6" /> Detalhes da Questão Respondida
           </DialogTitle>
-          <DialogDescription className="flex flex-col sm:flex-row sm:gap-2 text-xs">
+          <DialogDescription className="flex flex-col sm:flex-row sm:flex-wrap sm:gap-x-2 sm:gap-y-1 text-xs">
             <span>Respondido em {new Date(timestamp).toLocaleString('pt-BR')}.</span>
-            <span>Estilo: {getQuestionStyleLabel(questionStyle)}.</span>
+            {questionStyle && <span>Estilo: {getQuestionStyleLabel(questionStyle)}.</span>}
             {subject && <span>Matéria: {subject}.</span>}
             {topic && <span>Tópico: {topic}.</span>}
+            {source && <span className="font-semibold">Fonte: {source}.</span>}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[calc(80vh-180px)] pr-6"> {/* Adjusted height */}
+        <ScrollArea className="max-h-[calc(80vh-200px)] pr-6"> {/* Adjusted height more */}
           <div className="space-y-6 py-4">
             <div>
               <h3 className="font-semibold text-lg mb-1">Questão:</h3>
@@ -90,7 +94,7 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
             </div>
 
             {isCorrect !== null && (
-                <div className={`p-3 rounded-md flex items-center gap-2 ${isCorrect ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'}`}>
+                <div className={`p-3 rounded-md flex items-center gap-2 ${isCorrect ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
                     {isCorrect ? <CheckCircle className="text-green-600 dark:text-green-400 h-5 w-5"/> : <XCircle className="text-red-600 dark:text-red-400 h-5 w-5"/>}
                     <span className={`font-medium ${isCorrect ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
                         {isCorrect ? "Você acertou!" : "Você errou."}
@@ -113,21 +117,29 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
 
             <Separator/>
             <div>
-              <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Info className="text-primary"/> Explicação (Baseada na Lei):</h3>
-              <p className="text-muted-foreground whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
-                {explanation}
-              </p>
+              <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Info className="text-primary"/> Explicação Detalhada:</h3>
+              <Alert variant="default" className="bg-muted/50">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="whitespace-pre-wrap text-sm">
+                    {explanation}
+                </AlertDescription>
+              </Alert>
             </div>
             
+            {legalTextContext && (
+            <>
             <Separator/>
              <div>
-              <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><FileText className="text-primary"/> Contexto Legal Fornecido:</h3>
+              <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><FileText className="text-primary"/> Contexto Legal Original Fornecido:</h3>
               <ScrollArea className="h-32 bg-muted/30 p-3 rounded-md border">
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                     {legalTextContext}
                 </p>
               </ScrollArea>
             </div>
+            </>
+            )}
+
 
             {simulatedSourcedImageUrl && simulatedSourcedImageDescription && (
                 <>

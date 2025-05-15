@@ -16,6 +16,9 @@ export interface IQGeneratedQuestion {
   subject?: string; // Matéria
   topic?: string; // Tópico
 
+  // Source of the question
+  source: string; // e.g., "INÉDITA DANTASAI" or "Simulado: Cespe - 2023 - Analista"
+
   // Enriched content for each question
   aiGeneratedMnemonics?: string[];
   externalSearchLinks?: string[]; // Links from simulated internet search
@@ -39,7 +42,7 @@ export interface ILegalAnswer {
   userQuestion: string;
   explanation: string;
   citedArticle: string;
-  aiGeneratedImageDataUri?: string | null; // Kept here as the legal assistant might still generate an image
+  aiGeneratedImageDataUri?: string | null; 
   aiGeneratedMnemonics?: string[];
   enhancedExplanation?: string;
   externalSearchLinks?: string[];
@@ -57,3 +60,4 @@ export interface SubjectPerformance {
   total: number;
   percentage: number;
 }
+

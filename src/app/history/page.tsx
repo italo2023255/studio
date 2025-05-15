@@ -61,7 +61,7 @@ export default function HistoryPage() {
       const subjectMatch = !filterSubject || item.subject === filterSubject;
       const topicMatch = !filterTopic || item.topic === filterTopic;
       return subjectMatch && topicMatch;
-    });
+    }).sort((a,b) => b.timestamp - a.timestamp); // Sort by most recent first;
   }, [history, filterSubject, filterTopic]);
 
   const handleViewDetails = (question: IAnsweredQuestion) => {
@@ -76,7 +76,7 @@ export default function HistoryPage() {
     toast({ title: "Histórico Limpo", description: "Seu histórico de questões respondidas foi removido." });
   };
 
-  const getQuestionStyleLabel = (style: IAnsweredQuestion['questionStyle']) => {
+  const getQuestionStyleLabel = (style?: IAnsweredQuestion['questionStyle']) => { // Made style optional for safety
     if (style === 'cespe') return 'Certo/Errado';
     if (style === 'mcq4') return 'Múltipla Escolha (4)';
     if (style === 'mcq5') return 'Múltipla Escolha (5)';
@@ -192,18 +192,23 @@ export default function HistoryPage() {
           ) : (
             <ScrollArea className="h-[calc(60vh-50px)] sm:h-[60vh]">
               <div className="space-y-4 pr-4">
-                {filteredHistory.map((item) => (
+                {filteredHistory.map((item, index) => ( // Added index for Questão #
                   <Card key={item.id} className="hover:shadow-md transition-shadow">
                     <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg truncate flex-1 mr-2" title={item.question}>
-                          {item.question}
+                      <div className="flex justify-between items-start gap-2">
+                        <CardTitle className="text-lg flex-1 mr-2" title={item.question}>
+                           Questão {filteredHistory.length - index}: {item.question} {/* Numbering in reverse for most recent first */}
                         </CardTitle>
-                        {item.isCorrect !== null && (
-                            item.isCorrect ? 
-                            <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-white"><CheckCircle className="mr-1 h-4 w-4"/>Correta</Badge> : 
-                            <Badge variant="destructive"><XCircle className="mr-1 h-4 w-4"/>Incorreta</Badge>
-                        )}
+                        <div className="flex flex-col items-end gap-1">
+                            {item.isCorrect !== null && (
+                                item.isCorrect ? 
+                                <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-white"><CheckCircle className="mr-1 h-4 w-4"/>Correta</Badge> : 
+                                <Badge variant="destructive"><XCircle className="mr-1 h-4 w-4"/>Incorreta</Badge>
+                            )}
+                            <Badge variant={item.source === "INÉDITA DANTASAI" ? "default" : "secondary"} className="whitespace-nowrap text-xs">
+                              {item.source}
+                            </Badge>
+                        </div>
                       </div>
                       <CardDescription className="text-xs flex flex-wrap gap-x-2 gap-y-1 mt-1">
                         <span>Respondido em: {new Date(item.timestamp).toLocaleString('pt-BR')}</span>

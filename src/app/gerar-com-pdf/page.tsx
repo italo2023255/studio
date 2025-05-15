@@ -12,14 +12,17 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox'; // Added Checkbox
 import { useToast } from '@/hooks/use-toast';
 import { generateQuestions } from '@/ai/flows/generate-questions';
 import type { IQGeneratedQuestion, QuestionStyle, IAnsweredQuestion } from '@/types';
 import { addAnswerToHistory } from '@/lib/localStorage';
-import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, Send, MessageCircleQuestion, Edit3, Settings2, ImageIcon as ImageIconLucide, RotateCcw, CheckCircle, XCircle, ListChecks, FileQuestion as FileQuestionIcon, Youtube, FileType, UploadCloud, BookOpen, Tag } from 'lucide-react';
+import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, Send, MessageCircleQuestion, Edit3, Settings2, ImageIcon as ImageIconLucide, RotateCcw, CheckCircle, XCircle, ListChecks, FileQuestion as FileQuestionIcon, Youtube, FileType, UploadCloud, BookOpen, Tag, SearchCheck } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ClientOnly } from '@/components/ClientOnly';
+import { Badge } from '@/components/ui/badge';
+
 
 // Função heurística para verificar se o texto extraído é provavelmente lixo
 function isLikelyGarbage(text: string): boolean {
@@ -44,6 +47,7 @@ export default function GenerateFromPdfPage() {
   const [topic, setTopic] = useState<string>('');
   const [numQuestions, setNumQuestions] = useState<number>(1);
   const [questionStyle, setQuestionStyle] = useState<QuestionStyle>('cespe');
+  const [fetchSimulatedExternal, setFetchSimulatedExternal] = useState<boolean>(false); // New state
   const [generatedQuestions, setGeneratedQuestions] = useState<IQGeneratedQuestion[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isProcessingFile, setIsProcessingFile] = useState<boolean>(false);
@@ -125,15 +129,13 @@ export default function GenerateFromPdfPage() {
         legalText: pdfText,
         numQuestions,
         questionStyle,
+        subject,
+        topic,
+        fetchSimulatedExternal,
+        numSimulatedExternal: fetchSimulatedExternal ? 2 : 0,
       });
       
-      const questionsWithClientIds = result.questions.map((q, index) => ({
-        ...q,
-        id: `${Date.now()}-pdf-q${index}`, 
-        subject: subject,
-        topic: topic,
-      }));
-      setGeneratedQuestions(questionsWithClientIds);
+      setGeneratedQuestions(result.questions);
 
       toast({ title: 'Questões Geradas!', description: `${result.questions.length} questões foram criadas com sucesso a partir do texto fornecido.` });
     } catch (error: any) {
@@ -163,8 +165,7 @@ export default function GenerateFromPdfPage() {
       userAnswerIndex,
       isCorrect,
       timestamp: Date.now(),
-      subject: question.subject,
-      topic: question.topic,
+      // subject and topic are already part of IQGeneratedQuestion
     };
     addAnswerToHistory(answeredQuestion);
 
@@ -183,6 +184,7 @@ export default function GenerateFromPdfPage() {
     setTopic('');
     setNumQuestions(1);
     setQuestionStyle('cespe');
+    setFetchSimulatedExternal(false);
     setGeneratedQuestions([]);
     setUserAnswers({});
     setShowFeedback({});
@@ -280,32 +282,32 @@ export default function GenerateFromPdfPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                 <div>
-                  <Label htmlFor="numQuestions" className="text-base font-medium block mb-1">Número de Questões</Label>
+                  <Label htmlFor="numQuestionsPdf" className="text-base font-medium block mb-1">Nº Questões Inéditas</Label>
                   <Select
                     value={numQuestions.toString()}
                     onValueChange={(value) => setNumQuestions(parseInt(value))}
                     disabled={isLoading || isProcessingFile}
                   >
-                    <SelectTrigger id="numQuestions" className="text-base">
+                    <SelectTrigger id="numQuestionsPdf" className="text-base">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[1, 2, 3, 4, 5, 10].map(n => (
+                      {[1, 2, 3, 4, 5].map(n => (
                         <SelectItem key={n} value={n.toString()}>{n} questão(ões)</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="questionStyle" className="text-base font-medium block mb-1">Estilo da Questão</Label>
+                  <Label htmlFor="questionStylePdf" className="text-base font-medium block mb-1">Estilo da Questão</Label>
                   <Select
                     value={questionStyle}
                     onValueChange={(value) => setQuestionStyle(value as QuestionStyle)}
                     disabled={isLoading || isProcessingFile}
                   >
-                    <SelectTrigger id="questionStyle" className="text-base">
+                    <SelectTrigger id="questionStylePdf" className="text-base">
                       <SelectValue placeholder="Selecione o estilo" />
                     </SelectTrigger>
                     <SelectContent>
@@ -314,6 +316,17 @@ export default function GenerateFromPdfPage() {
                       <SelectItem value="mcq5">Múltipla Escolha (A-E)</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="flex items-center space-x-2 pb-1">
+                  <Checkbox
+                    id="fetchSimulatedExternalPdf"
+                    checked={fetchSimulatedExternal}
+                    onCheckedChange={(checked) => setFetchSimulatedExternal(checked as boolean)}
+                    disabled={isLoading || isProcessingFile}
+                  />
+                  <Label htmlFor="fetchSimulatedExternalPdf" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Questões de Bancas (Simulado)?
+                  </Label>
                 </div>
               </div>
               
@@ -348,12 +361,24 @@ export default function GenerateFromPdfPage() {
              <CardDescription>
                 Matéria: <span className="font-semibold text-foreground">{subject}</span> | Tópico: <span className="font-semibold text-foreground">{topic}</span>
             </CardDescription>
+            <Alert variant="default" className="mt-2">
+                <SearchCheck className="h-4 w-4" />
+                <AlertTitle>Sobre Questões de Bancas</AlertTitle>
+                <AlertDescription>
+                  As questões marcadas como "Simulado: [Nome da Banca]" são geradas pela IA para se assemelharem a questões reais de concurso e servem para fins de estudo e prática. Elas não são retiradas de provas oficiais.
+                </AlertDescription>
+            </Alert>
           </CardHeader>
           <CardContent className="space-y-6">
             {generatedQuestions.map((q, index) => (
               <Card key={q.id} className="overflow-hidden">
                 <CardHeader className="bg-muted/30">
-                  <CardTitle className="text-lg">Questão {index + 1}</CardTitle>
+                  <div className="flex justify-between items-start gap-2">
+                    <CardTitle className="text-lg">Questão {index + 1}</CardTitle>
+                     <Badge variant={q.source === "INÉDITA DANTASAI" ? "default" : "secondary"} className="whitespace-nowrap">
+                        {q.source}
+                    </Badge>
+                  </div>
                   <p className="text-foreground whitespace-pre-wrap pt-2">{q.question}</p>
                 </CardHeader>
                 <CardContent className="pt-4 space-y-4">

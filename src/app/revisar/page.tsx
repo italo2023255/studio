@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { getHistory, saveHistory } from '@/lib/localStorage';
 import type { IAnsweredQuestion } from '@/types';
 import { HistoryDetailsDialog } from '@/components/lexquiz/HistoryDetailsDialog';
-import { Eye, ListChecks, Trash2, RefreshCw, CheckCircle, XCircle, Filter, BookOpen, Tag, AlertTriangle, Repeat, RotateCcw, ImageIcon as ImageIconLucide } from 'lucide-react';
+import { Eye, ListChecks, Trash2, RefreshCw, CheckCircle, XCircle, Filter, BookOpen, Tag, AlertTriangle, Repeat, RotateCcw, ImageIcon as ImageIconLucide, Info, Link as LinkIcon, Youtube, Lightbulb } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,9 +37,9 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Alert, AlertDescription as ReviewAlertDescription } from '@/components/ui/alert'; // Renamed AlertDescription to avoid conflict
+import { Alert, AlertDescription as ReviewAlertDescription, AlertTitle as ReviewAlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
-import { Info } from 'lucide-react'; // Added Info icon import
+
 
 const ALL_ITEMS_VALUE = "_all_";
 
@@ -80,9 +80,9 @@ export default function ReviewPage() {
     return fullHistory.filter(item => {
       const subjectMatch = !filterSubject || item.subject === filterSubject;
       const topicMatch = !filterTopic || item.topic === filterTopic;
-      const mistakesMatch = !filterOnlyMistakes || (item.isCorrect === false && item.userAnswerIndex !== null); // only actual mistakes
+      const mistakesMatch = !filterOnlyMistakes || (item.isCorrect === false && item.userAnswerIndex !== null); 
       return subjectMatch && topicMatch && mistakesMatch;
-    }).sort((a,b) => b.timestamp - a.timestamp); // Sort by most recent first
+    }).sort((a,b) => b.timestamp - a.timestamp); 
   }, [fullHistory, filterSubject, filterTopic, filterOnlyMistakes]);
 
   const handleDeleteQuestion = (questionId: string) => {
@@ -105,7 +105,6 @@ export default function ReviewPage() {
   const handleCheckReviewAnswer = () => {
     if (userReviewAnswer === null || questionToReview === null) return;
     setShowReviewFeedback(true);
-    // Note: This does not update the original history record.
   };
 
   const resetFilters = () => {
@@ -114,7 +113,7 @@ export default function ReviewPage() {
     setFilterOnlyMistakes(false);
   };
 
-  const getQuestionStyleLabel = (style: IAnsweredQuestion['questionStyle']) => {
+  const getQuestionStyleLabel = (style?: IAnsweredQuestion['questionStyle']) => {
     if (style === 'cespe') return 'Certo/Errado';
     if (style === 'mcq4') return 'Múltipla Escolha (4)';
     if (style === 'mcq5') return 'Múltipla Escolha (5)';
@@ -125,6 +124,16 @@ export default function ReviewPage() {
     if (!description) return "legal concept";
     return description.toLowerCase().split(/\s+/).slice(0, 2).join(' ') || "legal concept";
   };
+  
+  const isYoutubeLink = (link: string) => {
+    try {
+      const url = new URL(link);
+      return url.hostname === 'www.youtube.com' || url.hostname === 'youtube.com' || url.hostname === 'youtu.be';
+    } catch (e) {
+      return false;
+    }
+  };
+
 
   if (!isMounted) {
     return (
@@ -184,13 +193,13 @@ export default function ReviewPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-center space-x-2 pt-5 sm:pt-0">
+                <div className="flex items-center space-x-2 pt-5 sm:pt-0 justify-self-start md:justify-self-auto">
                   <Checkbox
                     id="filterOnlyMistakes"
                     checked={filterOnlyMistakes}
                     onCheckedChange={(checked) => setFilterOnlyMistakes(checked as boolean)}
                   />
-                  <Label htmlFor="filterOnlyMistakes" className="font-medium">Mostrar apenas erros</Label>
+                  <Label htmlFor="filterOnlyMistakes" className="font-medium">Apenas erros</Label>
                 </div>
               </div>
               <Button onClick={resetFilters} variant="outline" size="sm">
@@ -210,20 +219,25 @@ export default function ReviewPage() {
               </p>
             </div>
           ) : (
-            <ScrollArea className="h-[calc(60vh-50px)] sm:h-[calc(70vh-120px)]"> {/* Adjusted height */}
+            <ScrollArea className="h-[calc(60vh-50px)] sm:h-[calc(70vh-120px)]"> 
               <div className="space-y-4 pr-4">
-                {filteredHistory.map((item) => (
+                {filteredHistory.map((item, index) => (
                   <Card key={item.id} className="hover:shadow-md transition-shadow">
                     <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg truncate flex-1 mr-2" title={item.question}>
-                          {item.question}
+                      <div className="flex justify-between items-start gap-2">
+                        <CardTitle className="text-lg flex-1 mr-2" title={item.question}>
+                          Questão {filteredHistory.length - index}: {item.question}
                         </CardTitle>
-                        {item.userAnswerIndex !== null && item.isCorrect !== null && (
-                            item.isCorrect ? 
-                            <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-white"><CheckCircle className="mr-1 h-4 w-4"/>Correta</Badge> : 
-                            <Badge variant="destructive"><XCircle className="mr-1 h-4 w-4"/>Incorreta</Badge>
-                        )}
+                        <div className="flex flex-col items-end gap-1">
+                            {item.userAnswerIndex !== null && item.isCorrect !== null && (
+                                item.isCorrect ? 
+                                <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-white"><CheckCircle className="mr-1 h-4 w-4"/>Correta</Badge> : 
+                                <Badge variant="destructive"><XCircle className="mr-1 h-4 w-4"/>Incorreta</Badge>
+                            )}
+                            <Badge variant={item.source === "INÉDITA DANTASAI" ? "default" : "secondary"} className="whitespace-nowrap text-xs">
+                              {item.source}
+                            </Badge>
+                        </div>
                       </div>
                       <CardDescription className="text-xs flex flex-wrap gap-x-2 gap-y-1 mt-1">
                         <span>Respondido em: {new Date(item.timestamp).toLocaleString('pt-BR')}</span>
@@ -290,10 +304,10 @@ export default function ReviewPage() {
             <ReviewDialogHeader>
               <ReviewDialogTitle className="flex items-center gap-2"><Repeat className="text-primary"/> Refazer Questão</ReviewDialogTitle>
               <ReviewDialogDescription>
-                Matéria: {questionToReview.subject || 'N/A'} | Tópico: {questionToReview.topic || 'N/A'}
+                Matéria: {questionToReview.subject || 'N/A'} | Tópico: {questionToReview.topic || 'N/A'} | Fonte: {questionToReview.source}
               </ReviewDialogDescription>
             </ReviewDialogHeader>
-            <ScrollArea className="max-h-[70vh] p-1 pr-3">
+            <ScrollArea className="max-h-[65vh] p-1 pr-3"> {/* Adjusted max height */}
             <div className="space-y-4 py-4">
               <p className="text-foreground whitespace-pre-wrap text-base">{questionToReview.question}</p>
               <RadioGroup
@@ -321,19 +335,43 @@ export default function ReviewPage() {
 
               {showReviewFeedback && questionToReview && (
                 <div className="space-y-4 pt-4 border-t mt-4">
-                  <h3 className="font-semibold text-lg mb-1 flex items-center gap-2">
+                   <ReviewAlertTitle className="text-lg">
                     {userReviewAnswer === questionToReview.correctAnswerIndex ? (
                         <span className="flex items-center text-green-600"><CheckCircle className="mr-2"/> Resposta Correta!</span>
                     ) : (
                         <span className="flex items-center text-red-600"><XCircle className="mr-2"/> Resposta Incorreta.</span>
                     )}
-                  </h3>
+                  </ReviewAlertTitle>
                   <p className="text-sm"><strong>Sua nova resposta:</strong> {questionToReview.options[userReviewAnswer!]}</p>
-                  <p className="text-sm"><strong>Resposta correta:</strong> {questionToReview.options[questionToReview.correctAnswerIndex]}</p>
-                  <Alert variant="default" className="bg-muted/50">
-                    <Info className="h-4 w-4" />
-                    <ReviewAlertDescription className="whitespace-pre-wrap text-sm">{questionToReview.explanation}</ReviewAlertDescription>
-                  </Alert>
+                  <p className="text-sm"><strong>Resposta correta original:</strong> {questionToReview.options[questionToReview.correctAnswerIndex]}</p>
+                  
+                  <Separator className="my-3"/>
+
+                  <div>
+                    <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><Info className="text-primary h-5 w-5"/> Gabarito e Explicação</h4>
+                     <Alert variant="default" className="bg-muted/50">
+                        <ReviewAlertDescription className="whitespace-pre-wrap text-sm">{questionToReview.explanation}</ReviewAlertDescription>
+                    </Alert>
+                  </div>
+                  
+                  {questionToReview.aiGeneratedMnemonics && questionToReview.aiGeneratedMnemonics.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><Lightbulb className="text-primary h-5 w-5"/> Macetes (Gerados por IA)</h4>
+                      <ul className="list-disc list-inside text-muted-foreground space-y-1 pl-5 text-sm">
+                        {questionToReview.aiGeneratedMnemonics.map((mnemonic, idx) => (
+                          <li key={`ai-mne-rev-${questionToReview.id}-${idx}`}>{mnemonic}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {questionToReview.simulatedSourcedMnemonic && (
+                      <div>
+                          <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><Lightbulb className="text-orange-500 h-5 w-5"/> Exemplo de Macete (Simulado de Fontes)</h4>
+                          <p className="text-muted-foreground italic text-sm">"{questionToReview.simulatedSourcedMnemonic}"</p>
+                      </div>
+                  )}
+                  
                   {questionToReview.simulatedSourcedImageUrl && questionToReview.simulatedSourcedImageDescription && (
                     <div>
                         <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400 h-5 w-5"/> Imagem (Simulada de Fontes)</h4>
@@ -348,6 +386,22 @@ export default function ReviewPage() {
                                 data-ai-hint={generateAiHint(questionToReview.simulatedSourcedImageDescription)}
                             />
                         </div>
+                    </div>
+                  )}
+                  
+                  {questionToReview.externalSearchLinks && questionToReview.externalSearchLinks.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><LinkIcon className="text-primary h-5 w-5"/> Links Úteis (Pesquisa Simulada)</h4>
+                      <ul className="list-disc list-inside text-muted-foreground space-y-1 pl-5 text-sm">
+                        {questionToReview.externalSearchLinks.map((link, idx) => (
+                          <li key={`ext-link-rev-${questionToReview.id}-${idx}`} className="flex items-center gap-1">
+                            {isYoutubeLink(link) && <Youtube className="h-4 w-4 text-red-600" />}
+                            <a href={link.startsWith('http') ? link : `http://${link}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate" title={link}>
+                              {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </div>
@@ -366,5 +420,3 @@ export default function ReviewPage() {
     </div>
   );
 }
-
-    

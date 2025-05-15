@@ -12,14 +12,17 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox'; // Added Checkbox
 import { useToast } from '@/hooks/use-toast';
 import { generateQuestions } from '@/ai/flows/generate-questions';
 import type { IQGeneratedQuestion, QuestionStyle, IAnsweredQuestion } from '@/types';
 import { addAnswerToHistory } from '@/lib/localStorage';
-import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, Send, MessageCircleQuestion, Edit3, Settings2, ImageIcon as ImageIconLucide, RotateCcw, CheckCircle, XCircle, ListChecks, FileQuestion as FileQuestionIcon, Youtube, BookOpen, Tag } from 'lucide-react';
+import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, Send, MessageCircleQuestion, Edit3, Settings2, ImageIcon as ImageIconLucide, RotateCcw, CheckCircle, XCircle, ListChecks, FileQuestion as FileQuestionIcon, Youtube, BookOpen, Tag, SearchCheck } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ClientOnly } from '@/components/ClientOnly';
+import { Badge } from '@/components/ui/badge';
+
 
 export default function HomePage() {
   const [legalText, setLegalText] = useState<string>('');
@@ -27,6 +30,7 @@ export default function HomePage() {
   const [topic, setTopic] = useState<string>('');
   const [numQuestions, setNumQuestions] = useState<number>(1);
   const [questionStyle, setQuestionStyle] = useState<QuestionStyle>('cespe');
+  const [fetchSimulatedExternal, setFetchSimulatedExternal] = useState<boolean>(false); // New state
   const [generatedQuestions, setGeneratedQuestions] = useState<IQGeneratedQuestion[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [userAnswers, setUserAnswers] = useState<Record<string, number | null>>({});
@@ -49,7 +53,6 @@ export default function HomePage() {
       return;
     }
 
-
     setIsLoading(true);
     setGeneratedQuestions([]);
     setUserAnswers({});
@@ -60,15 +63,14 @@ export default function HomePage() {
         legalText,
         numQuestions,
         questionStyle,
+        subject,
+        topic,
+        fetchSimulatedExternal, // Pass new flag
+        numSimulatedExternal: fetchSimulatedExternal ? 2 : 0, // Example: fetch 2 if checked
       });
       
-      const questionsWithClientIds = result.questions.map((q, index) => ({
-        ...q,
-        id: `${Date.now()}-q${index}`,
-        subject: subject, // Add subject
-        topic: topic,     // Add topic
-      }));
-      setGeneratedQuestions(questionsWithClientIds);
+      // ID and subject/topic are now set within the flow for all questions
+      setGeneratedQuestions(result.questions);
 
       toast({ title: 'Questões Geradas!', description: `${result.questions.length} questões foram criadas com sucesso.` });
     } catch (error: any) {
@@ -94,12 +96,11 @@ export default function HomePage() {
     
     const answeredQuestion: IAnsweredQuestion = {
       ...question,
-      legalTextContext: legalText,
+      legalTextContext: legalText, // Save context of original legal text used
       userAnswerIndex,
       isCorrect,
       timestamp: Date.now(),
-      subject: question.subject,
-      topic: question.topic,
+      // subject and topic are already part of IQGeneratedQuestion
     };
     addAnswerToHistory(answeredQuestion);
 
@@ -118,6 +119,7 @@ export default function HomePage() {
     setTopic('');
     setNumQuestions(1);
     setQuestionStyle('cespe');
+    setFetchSimulatedExternal(false);
     setGeneratedQuestions([]);
     setUserAnswers({});
     setShowFeedback({});
@@ -146,7 +148,7 @@ export default function HomePage() {
             <Edit3 className="text-primary" /> Gerador de Questões Jurídicas
           </CardTitle>
           <CardDescription>
-            Insira a matéria, o tópico, um trecho de lei, escolha o número e o estilo das questões, e a IA criará um quiz para você com explicações, macetes e mais.
+            Insira a matéria, o tópico, um trecho de lei, e a IA criará um quiz com explicações, macetes e mais. Você também pode solicitar questões simuladas de bancas.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -190,9 +192,9 @@ export default function HomePage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                 <div>
-                  <Label htmlFor="numQuestions" className="text-base font-medium block mb-1">Número de Questões</Label>
+                  <Label htmlFor="numQuestions" className="text-base font-medium block mb-1">Nº Questões Inéditas</Label>
                   <Select
                     value={numQuestions.toString()}
                     onValueChange={(value) => setNumQuestions(parseInt(value))}
@@ -202,7 +204,7 @@ export default function HomePage() {
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[1, 2, 3, 4, 5, 10].map(n => (
+                      {[1, 2, 3, 4, 5].map(n => ( // Max 5 for inéditas for now
                         <SelectItem key={n} value={n.toString()}>{n} questão(ões)</SelectItem>
                       ))}
                     </SelectContent>
@@ -224,6 +226,17 @@ export default function HomePage() {
                       <SelectItem value="mcq5">Múltipla Escolha (A-E)</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                 <div className="flex items-center space-x-2 pb-1">
+                  <Checkbox
+                    id="fetchSimulatedExternal"
+                    checked={fetchSimulatedExternal}
+                    onCheckedChange={(checked) => setFetchSimulatedExternal(checked as boolean)}
+                    disabled={isLoading}
+                  />
+                  <Label htmlFor="fetchSimulatedExternal" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Incluir Questões de Bancas (Simulado)?
+                  </Label>
                 </div>
               </div>
               
@@ -258,12 +271,24 @@ export default function HomePage() {
             <CardDescription>
                 Matéria: <span className="font-semibold text-foreground">{subject}</span> | Tópico: <span className="font-semibold text-foreground">{topic}</span>
             </CardDescription>
+             <Alert variant="default" className="mt-2">
+                <SearchCheck className="h-4 w-4" />
+                <AlertTitle>Sobre Questões de Bancas</AlertTitle>
+                <AlertDescription>
+                  As questões marcadas como "Simulado: [Nome da Banca]" são geradas pela IA para se assemelharem a questões reais de concurso e servem para fins de estudo e prática. Elas não são retiradas de provas oficiais.
+                </AlertDescription>
+            </Alert>
           </CardHeader>
           <CardContent className="space-y-6">
             {generatedQuestions.map((q, index) => (
               <Card key={q.id} className="overflow-hidden">
                 <CardHeader className="bg-muted/30">
-                  <CardTitle className="text-lg">Questão {index + 1}</CardTitle>
+                  <div className="flex justify-between items-start gap-2">
+                    <CardTitle className="text-lg">Questão {index + 1}</CardTitle>
+                    <Badge variant={q.source === "INÉDITA DANTASAI" ? "default" : "secondary"} className="whitespace-nowrap">
+                      {q.source}
+                    </Badge>
+                  </div>
                   <p className="text-foreground whitespace-pre-wrap pt-2">{q.question}</p>
                 </CardHeader>
                 <CardContent className="pt-4 space-y-4">
