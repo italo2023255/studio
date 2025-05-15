@@ -8,7 +8,7 @@ import { getHistory } from '@/lib/localStorage';
 import type { IAnsweredQuestion, SubjectPerformance } from '@/types';
 import { ListChecks, AlertTriangle, BarChart3, CheckCircle, XCircle, Smile, Meh, Frown } from 'lucide-react';
 import { ClientOnly } from '@/components/ClientOnly';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function PerformancePage() {
   const [history, setHistory] = useState<IAnsweredQuestion[]>([]);
@@ -202,7 +202,7 @@ export default function PerformancePage() {
        {performanceData.overall && performanceData.overall.totalAnswered > 0 && areasOfFocus.length === 0 && performanceData.bySubject.every(s => s.percentage >=70 || s.total <3) && (
          <Alert variant="default" className="bg-green-50 border-green-300 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300">
             <Smile className="h-5 w-5 text-current" />
-            <Alert.Title className="font-semibold text-current">Parabéns!</Alert.Title>
+            <AlertTitle className="font-semibold text-current">Parabéns!</AlertTitle>
             <AlertDescription className="text-current">
               Seu desempenho está ótimo em todas as matérias com um volume significativo de questões respondidas. Continue assim!
             </AlertDescription>
