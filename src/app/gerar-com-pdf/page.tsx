@@ -1,11 +1,12 @@
 
 'use client';
 
-import type { FormEvent } from 'react';
+import type { FormEvent, ChangeEvent } from 'react';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input'; // Adicionado Input
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -15,10 +16,31 @@ import { useToast } from '@/hooks/use-toast';
 import { generateQuestions } from '@/ai/flows/generate-questions';
 import type { IQGeneratedQuestion, QuestionStyle, IAnsweredQuestion } from '@/types';
 import { addAnswerToHistory } from '@/lib/localStorage';
-import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, Send, MessageCircleQuestion, Edit3, Settings2, ImageIcon as ImageIconLucide, RotateCcw, CheckCircle, XCircle, ListChecks, FileQuestion as FileQuestionIcon, Youtube, FileType } from 'lucide-react';
+import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, Send, MessageCircleQuestion, Edit3, Settings2, ImageIcon as ImageIconLucide, RotateCcw, CheckCircle, XCircle, ListChecks, FileQuestion as FileQuestionIcon, Youtube, FileType, UploadCloud } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ClientOnly } from '@/components/ClientOnly';
+
+// Função heurística para verificar se o texto extraído é provavelmente lixo
+function isLikelyGarbage(text: string): boolean {
+  if (!text || text.length < 50) return false; // Muito curto para julgar ou vazio
+  // Procura por uma alta proporção de caracteres de substituição (geralmente indica problemas de codificação/binário)
+  // ou uma baixa proporção de espaços (textos reais geralmente têm espaços).
+  const replacementCharRegex = /\uFFFD/g;
+  const spaceRegex = /\s/g;
+
+  const replacementMatches = text.match(replacementCharRegex);
+  const percentageReplacement = (replacementMatches ? replacementMatches.length : 0) / text.length;
+
+  const spaceMatches = text.match(spaceRegex);
+  const percentageSpaces = (spaceMatches ? spaceMatches.length : 0) / text.length;
+
+  // Se mais de 20% são caracteres de substituição, ou menos de 5% são espaços (para textos mais longos),
+  // é provável que seja lixo. Ajuste esses limites conforme necessário.
+  if (text.length > 200 && percentageSpaces < 0.05) return true;
+  return percentageReplacement > 0.20;
+}
+
 
 export default function GenerateFromPdfPage() {
   const [pdfText, setPdfText] = useState<string>('');
@@ -26,15 +48,64 @@ export default function GenerateFromPdfPage() {
   const [questionStyle, setQuestionStyle] = useState<QuestionStyle>('cespe');
   const [generatedQuestions, setGeneratedQuestions] = useState<IQGeneratedQuestion[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isProcessingFile, setIsProcessingFile] = useState<boolean>(false);
   const [userAnswers, setUserAnswers] = useState<Record<string, number | null>>({});
   const [showFeedback, setShowFeedback] = useState<Record<string, boolean>>({});
 
   const { toast } = useToast();
 
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        toast({ title: 'Arquivo Inválido', description: 'Por favor, selecione um arquivo PDF.', variant: 'destructive' });
+        event.target.value = ''; // Limpa o input
+        return;
+      }
+      setIsProcessingFile(true);
+      setPdfText(''); // Limpa o texto anterior enquanto processa
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        if (text && !isLikelyGarbage(text)) {
+          setPdfText(text);
+          toast({
+            title: 'Texto do PDF Carregado (Tentativa)',
+            description: 'O texto foi extraído. Verifique se está correto antes de gerar as questões. A extração automática pode não ser perfeita.',
+            variant: 'default',
+            duration: 7000,
+          });
+        } else {
+          setPdfText('');
+          toast({
+            title: 'Falha na Extração Automática do PDF',
+            description: 'Não foi possível extrair o texto do PDF automaticamente ou o conteúdo é incompreensível. Por favor, copie e cole o texto do seu PDF manualmente na área indicada.',
+            variant: 'destructive', // Changed to destructive for clarity
+            duration: 10000,
+          });
+        }
+        setIsProcessingFile(false);
+        event.target.value = ''; // Limpa o input para permitir o mesmo upload novamente se necessário
+      };
+      reader.onerror = () => {
+        setPdfText('');
+        setIsProcessingFile(false);
+        toast({
+          title: 'Erro ao Ler Arquivo PDF',
+          description: 'Ocorreu um erro ao tentar ler o arquivo. Por favor, copie e cole o texto manualmente.',
+          variant: 'destructive',
+        });
+        event.target.value = ''; // Limpa o input
+      };
+      reader.readAsText(file); // Tenta ler o PDF como texto puro
+    }
+  };
+
   const handleGenerateQuestions = async (event: FormEvent) => {
     event.preventDefault();
     if (!pdfText.trim()) {
-      toast({ title: 'Texto do PDF Ausente', description: 'Por favor, cole o texto do PDF para gerar questões.', variant: 'destructive' });
+      toast({ title: 'Texto do PDF Ausente', description: 'Por favor, cole o texto do PDF ou faça upload de um arquivo para extração.', variant: 'destructive' });
       return;
     }
 
@@ -45,7 +116,7 @@ export default function GenerateFromPdfPage() {
 
     try {
       const result = await generateQuestions({
-        legalText: pdfText, // Use pdfText here
+        legalText: pdfText,
         numQuestions,
         questionStyle,
       });
@@ -56,7 +127,7 @@ export default function GenerateFromPdfPage() {
       }));
       setGeneratedQuestions(questionsWithClientIds);
 
-      toast({ title: 'Questões Geradas!', description: `${result.questions.length} questões foram criadas com sucesso a partir do texto do PDF.` });
+      toast({ title: 'Questões Geradas!', description: `${result.questions.length} questões foram criadas com sucesso a partir do texto fornecido.` });
     } catch (error: any) {
       console.error('Error generating questions from PDF text:', error);
       toast({ title: 'Erro ao Gerar Questões', description: error.message || 'Ocorreu um erro inesperado. Tente novamente.', variant: 'destructive' });
@@ -80,7 +151,7 @@ export default function GenerateFromPdfPage() {
     
     const answeredQuestion: IAnsweredQuestion = {
       ...question,
-      legalTextContext: pdfText, // Use pdfText as context
+      legalTextContext: pdfText,
       userAnswerIndex,
       isCorrect,
       timestamp: Date.now(),
@@ -104,6 +175,10 @@ export default function GenerateFromPdfPage() {
     setUserAnswers({});
     setShowFeedback({});
     setIsLoading(false);
+    setIsProcessingFile(false);
+    // Reset file input if possible (requires a ref or other methods)
+    const fileInput = document.getElementById('pdfUpload') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
   };
 
   const isYoutubeLink = (link: string) => {
@@ -128,21 +203,43 @@ export default function GenerateFromPdfPage() {
             <FileType className="text-primary" /> Gerador de Questões por PDF
           </CardTitle>
           <CardDescription>
-            Copie o texto do seu arquivo PDF, cole abaixo, escolha o número e o estilo das questões, e a IA criará um quiz.
+            Faça upload de um arquivo PDF para tentar extrair o texto, ou copie e cole o texto do seu PDF abaixo. Depois, escolha o número e o estilo das questões.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <ClientOnly>
             <form onSubmit={handleGenerateQuestions} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="pdfUpload" className="text-base font-medium">Upload de Arquivo PDF (Experimental)</Label>
+                <Input
+                  id="pdfUpload"
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleFileChange}
+                  disabled={isProcessingFile || isLoading}
+                  className="text-base file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                />
+                {isProcessingFile && <p className="text-sm text-muted-foreground flex items-center"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando arquivo...</p>}
+                 <Alert variant="default" className="mt-2">
+                  <UploadCloud className="h-4 w-4" />
+                  <AlertTitle>Nota sobre Upload de PDF</AlertTitle>
+                  <AlertDescription>
+                    A extração de texto de PDFs é complexa. Esta funcionalidade tentará ler o texto do seu PDF, mas pode não funcionar para todos os arquivos, especialmente os digitalizados como imagem ou com formatação complexa. Se a extração falhar, por favor, copie e cole o texto manualmente na área abaixo.
+                  </AlertDescription>
+                </Alert>
+              </div>
+
+              <Separator />
+
               <div>
-                <Label htmlFor="pdfText" className="text-base font-medium block mb-1">Texto do PDF</Label>
+                <Label htmlFor="pdfText" className="text-base font-medium block mb-1">Texto do PDF (Copie e Cole aqui se o upload falhar)</Label>
                 <Textarea
                   id="pdfText"
                   placeholder="Cole aqui o texto copiado do seu arquivo PDF..."
                   value={pdfText}
                   onChange={(e) => setPdfText(e.target.value)}
                   className="text-base min-h-[200px] resize-y"
-                  disabled={isLoading}
+                  disabled={isLoading || isProcessingFile}
                   rows={10}
                 />
               </div>
@@ -153,7 +250,7 @@ export default function GenerateFromPdfPage() {
                   <Select
                     value={numQuestions.toString()}
                     onValueChange={(value) => setNumQuestions(parseInt(value))}
-                    disabled={isLoading}
+                    disabled={isLoading || isProcessingFile}
                   >
                     <SelectTrigger id="numQuestions" className="text-base">
                       <SelectValue placeholder="Selecione" />
@@ -170,7 +267,7 @@ export default function GenerateFromPdfPage() {
                   <Select
                     value={questionStyle}
                     onValueChange={(value) => setQuestionStyle(value as QuestionStyle)}
-                    disabled={isLoading}
+                    disabled={isLoading || isProcessingFile}
                   >
                     <SelectTrigger id="questionStyle" className="text-base">
                       <SelectValue placeholder="Selecione o estilo" />
@@ -185,11 +282,11 @@ export default function GenerateFromPdfPage() {
               </div>
               
               <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                <Button type="submit" disabled={isLoading || !pdfText.trim()} className="w-full sm:w-auto bg-primary hover:bg-primary/90">
+                <Button type="submit" disabled={isLoading || isProcessingFile || !pdfText.trim()} className="w-full sm:w-auto bg-primary hover:bg-primary/90">
                   {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                  Gerar Questões do PDF
+                  Gerar Questões do Texto
                 </Button>
-                <Button type="button" variant="outline" onClick={handleReset} disabled={isLoading} className="w-full sm:w-auto">
+                <Button type="button" variant="outline" onClick={handleReset} disabled={isLoading || isProcessingFile} className="w-full sm:w-auto">
                   <RotateCcw className="mr-2 h-4 w-4" />
                   Limpar Tudo
                 </Button>
@@ -202,7 +299,7 @@ export default function GenerateFromPdfPage() {
       {isLoading && generatedQuestions.length === 0 && (
         <div className="flex flex-col items-center justify-center p-10 space-y-3">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-muted-foreground">Gerando suas questões a partir do texto do PDF... Isso pode levar alguns instantes.</p>
+            <p className="text-muted-foreground">Gerando suas questões a partir do texto fornecido... Isso pode levar alguns instantes.</p>
         </div>
       )}
 
@@ -210,7 +307,7 @@ export default function GenerateFromPdfPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-xl">
-              <ListChecks className="text-primary"/> Questões Geradas do PDF
+              <ListChecks className="text-primary"/> Questões Geradas do Texto Fornecido
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -238,7 +335,7 @@ export default function GenerateFromPdfPage() {
                   </RadioGroup>
                   
                   {!showFeedback[q.id] && (
-                    <Button onClick={() => handleCheckAnswer(q)} size="sm">
+                    <Button onClick={() => handleCheckAnswer(q)} size="sm" disabled={userAnswers[q.id] === undefined || userAnswers[q.id] === null}>
                       <CheckCircle className="mr-2 h-4 w-4" /> Verificar Resposta
                     </Button>
                   )}
@@ -331,5 +428,6 @@ export default function GenerateFromPdfPage() {
     </div>
   );
 }
+    
 
     
