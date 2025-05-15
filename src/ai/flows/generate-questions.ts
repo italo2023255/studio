@@ -13,7 +13,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
-import type { IQGeneratedQuestion } from '@/types'; // IQGeneratedQuestion now includes 'source'
+import type { IQGeneratedQuestion, IExternalLink } from '@/types'; // IQGeneratedQuestion now includes 'source'
 import { generateMnemonics, type GenerateMnemonicsInput } from './generate-mnemonics';
 import { enhanceAnswerWithInternetSearch, type EnhanceAnswerWithInternetSearchInput, type EnhanceAnswerWithInternetSearchOutput } from './enhance-answer-with-internet-search';
 import { findSimulatedExternalQuestions, type FindSimulatedExternalQuestionsInput, type FindSimulatedExternalQuestionsOutput } from './find-simulated-external-questions';
@@ -62,6 +62,13 @@ const BaseGenerateQuestionsOutputSchema = z.object({
   questions: z.array(BaseQuestionObjectSchema).describe('An array of question objects, matching the requested style and count.'),
 });
 
+// Define LinkObjectSchema to match IExternalLink structure
+const LinkObjectSchema = z.object({
+    title: z.string().describe("Title of the search result."),
+    link: z.string().url().describe("URL of the search result."),
+    snippet: z.string().optional().describe("A brief summary of the search result content."),
+    type: z.enum(["jurisprudence", "article", "video", "forum_discussion", "youtube_video", "instagram_video", "facebook_video", "other"]).describe("Type of content.")
+});
 
 // Schema for a fully enriched question, matching IQGeneratedQuestion type
 const EnrichedQuestionSchema = z.object({
@@ -76,7 +83,7 @@ const EnrichedQuestionSchema = z.object({
   subject: z.string().optional(),
   topic: z.string().optional(),
   aiGeneratedMnemonics: z.array(z.string()).optional(),
-  externalSearchLinks: z.array(z.string().url()).optional(),
+  externalSearchLinks: z.array(LinkObjectSchema).optional(), // Corrected to use LinkObjectSchema
   simulatedSourcedImageDescription: z.string().optional(),
   simulatedSourcedImageUrl: z.string().url().optional(),
   simulatedSourcedMnemonic: z.string().optional(),
@@ -238,10 +245,10 @@ const generateQuestionsFlow = ai.defineFlow(
 
         const aiGeneratedMnemonics = mnemonicsResult.status === 'fulfilled' ? mnemonicsResult.value.mnemonics : [];
         
-        let searchData: Partial<EnhanceAnswerWithInternetSearchOutput> = {};
+        let searchData: Partial<EnhanceAnswerWithInternetSearchOutput> & { externalSearchLinks?: IExternalLink[] } = {}; // Ensure externalSearchLinks here is typed as IExternalLink[]
         if (searchResult.status === 'fulfilled' && searchResult.value) {
             searchData = {
-                externalSearchLinks: searchResult.value.searchLinks,
+                externalSearchLinks: searchResult.value.searchLinks, // This is IExternalLink[] from the flow
                 simulatedSourcedImageDescription: searchResult.value.simulatedSourcedImageDescription,
                 simulatedSourcedImageUrl: searchResult.value.simulatedSourcedImageUrl,
                 simulatedSourcedMnemonic: searchResult.value.simulatedSourcedMnemonic,
@@ -251,8 +258,8 @@ const generateQuestionsFlow = ai.defineFlow(
         enrichedQuestions.push({
           ...baseQuestion,
           id: `${Date.now()}-q-${enrichedQuestions.length}`,
-          questionStyle: baseQuestion.questionStyle, // This should be set correctly from baseQuestion
-          source: baseQuestion.source, // This should be set correctly from baseQuestion
+          questionStyle: baseQuestion.questionStyle, 
+          source: baseQuestion.source, 
           subject: input.subject,
           topic: input.topic,
           aiGeneratedMnemonics,
@@ -288,3 +295,6 @@ const generateQuestionsFlow = ai.defineFlow(
     return { questions: enrichedQuestions };
   }
 );
+
+
+    
