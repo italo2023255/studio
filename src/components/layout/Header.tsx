@@ -8,10 +8,10 @@ export function Header() {
   return (
     <header className="border-b bg-card">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
-        <Link href="/" className="flex items-center gap-2" aria-label="Página Inicial LexQuiz AI">
+        <Link href="/" className="flex items-center gap-2" aria-label="Página Inicial DantasAI">
           <LogoIcon className="h-8 w-8 text-primary" />
           <span className="text-xl font-bold tracking-tight text-foreground">
-            LexQuiz AI
+            DantasAI
           </span>
         </Link>
         <nav className="flex items-center gap-1 sm:gap-2">

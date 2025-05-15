@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'LexQuiz AI',
+  title: 'DantasAI',
   description: 'Gere questões jurídicas com IA e aprimore seus estudos.',
 };
 
@@ -35,7 +35,7 @@ export default function RootLayout({
         </main>
         <Toaster />
         <footer className="py-6 text-center text-sm text-muted-foreground border-t">
-          © {new Date().getFullYear()} LexQuiz AI. Todos os direitos reservados.
+          © {new Date().getFullYear()} DantasAI. Todos os direitos reservados.
         </footer>
       </body>
     </html>
