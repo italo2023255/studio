@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Header } from '@/components/layout/Header';
+import { BottomNavigation } from '@/components/layout/BottomNavigation';
 import { Toaster } from '@/components/ui/toaster';
 
 const geistSans = Geist({
@@ -30,9 +31,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background`}
       >
         <Header />
-        <main className="flex-grow container mx-auto px-4 py-8 md:px-6">
+        <main className="flex-grow container mx-auto px-4 py-8 md:px-6 pb-24"> {/* Added pb-24 for bottom nav */}
           {children}
         </main>
+        <BottomNavigation />
         <Toaster />
         <footer className="py-6 text-center text-sm text-muted-foreground border-t">
           © {new Date().getFullYear()} DantasAI. Todos os direitos reservados.
