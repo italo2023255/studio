@@ -1,32 +1,30 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { getHistory } from '@/lib/localStorage';
-import type { IAnsweredQuestion } from '@/types';
-import { HistoryDetailsDialog } from '@/components/lexquiz/HistoryDetailsDialog';
-import { CheckCircle2, XCircle, Eye, ListChecks, Trash2 } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert-dialog";
+import { getHistory, saveHistory } from '@/lib/localStorage'; // Using new getHistory
+import type { ILegalAnswer } from '@/types'; // Using new ILegalAnswer
+import { HistoryDetailsDialog } from '@/components/lexquiz/HistoryDetailsDialog'; // This dialog will need to be updated
+import { Eye, ListChecks, Trash2, FileQuestion } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription as AlertDialogDesc, // Renamed to avoid conflict
+  AlertDialogDescription as AlertDialogDesc,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { saveHistory } from '@/lib/localStorage';
-
 
 export default function HistoryPage() {
-  const [history, setHistory] = useState<IAnsweredQuestion[]>([]);
-  const [selectedQuestion, setSelectedQuestion] = useState<IAnsweredQuestion | null>(null);
+  const [history, setHistory] = useState<ILegalAnswer[]>([]);
+  const [selectedAnswer, setSelectedAnswer] = useState<ILegalAnswer | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const { toast } = useToast();
 
@@ -35,14 +33,14 @@ export default function HistoryPage() {
     setHistory(getHistory());
   }, []);
 
-  const handleViewDetails = (question: IAnsweredQuestion) => {
-    setSelectedQuestion(question);
+  const handleViewDetails = (answer: ILegalAnswer) => {
+    setSelectedAnswer(answer);
   };
 
   const handleClearHistory = () => {
     saveHistory([]);
     setHistory([]);
-    toast({ title: "Histórico Limpo", description: "Seu histórico de questões foi removido." });
+    toast({ title: "Histórico Limpo", description: "Seu histórico de perguntas e respostas foi removido." });
   };
 
   if (!isMounted) {
@@ -60,9 +58,9 @@ export default function HistoryPage() {
         <CardHeader className="flex flex-row justify-between items-center">
           <div>
             <CardTitle className="text-2xl flex items-center gap-2">
-              <ListChecks className="text-primary" /> Histórico de Questões
+              <ListChecks className="text-primary" /> Histórico de Consultas
             </CardTitle>
-            <CardDescription>Revise as questões que você já respondeu.</CardDescription>
+            <CardDescription>Revise as perguntas que você fez e as respostas da IA.</CardDescription>
           </div>
           {history.length > 0 && (
              <AlertDialog>
@@ -75,8 +73,8 @@ export default function HistoryPage() {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Confirmar Limpeza do Histórico</AlertDialogTitle>
-                  <AlertDialogDesc> {/* Used renamed component */}
-                    Tem certeza que deseja apagar todo o seu histórico de questões? Esta ação não pode ser desfeita.
+                  <AlertDialogDesc>
+                    Tem certeza que deseja apagar todo o seu histórico de consultas? Esta ação não pode ser desfeita.
                   </AlertDialogDesc>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -92,9 +90,9 @@ export default function HistoryPage() {
         <CardContent>
           {history.length === 0 ? (
             <div className="text-center py-10">
-              <ListChecks className="mx-auto h-12 w-12 text-muted-foreground" />
+              <FileQuestion className="mx-auto h-12 w-12 text-muted-foreground" />
               <p className="mt-4 text-lg text-muted-foreground">Seu histórico está vazio.</p>
-              <p className="text-sm text-muted-foreground">Responda algumas questões para vê-las aqui.</p>
+              <p className="text-sm text-muted-foreground">Faça algumas perguntas para vê-las aqui.</p>
             </div>
           ) : (
             <ScrollArea className="h-[60vh]">
@@ -103,26 +101,21 @@ export default function HistoryPage() {
                   <Card key={item.id} className="hover:shadow-md transition-shadow">
                     <CardHeader>
                       <CardTitle className="text-lg truncate flex items-center justify-between">
-                        <span className="truncate flex-1 mr-2" title={item.question}>{item.question}</span>
-                        {item.isCorrect ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                        )}
+                        <span className="truncate flex-1 mr-2" title={item.userQuestion}>
+                          P: {item.userQuestion}
+                        </span>
                       </CardTitle>
                       <CardDescription className="text-xs">
-                        Respondida em: {new Date(item.timestamp).toLocaleString('pt-BR')}
+                        Consultado em: {new Date(item.timestamp).toLocaleString('pt-BR')}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-muted-foreground">
-                        Sua resposta: <span className="font-medium text-foreground">{item.options[item.userAnswerIndex]}</span>
+                       <p className="text-sm text-muted-foreground line-clamp-2">
+                        Artigo Citado: <span className="font-medium text-foreground">{item.citedArticle.substring(0,100)}{item.citedArticle.length > 100 ? "..." : ""}</span>
                       </p>
-                      {!item.isCorrect && (
-                        <p className="text-sm text-muted-foreground">
-                          Resposta correta: <span className="font-medium text-foreground">{item.options[item.correctAnswerIndex]}</span>
-                        </p>
-                      )}
+                       <p className="text-sm text-muted-foreground line-clamp-3 mt-1">
+                        Explicação: <span className="font-normal text-foreground">{item.explanation.substring(0,150)}{item.explanation.length > 150 ? "..." : ""}</span>
+                      </p>
                     </CardContent>
                     <CardFooter>
                       <Button variant="outline" size="sm" onClick={() => handleViewDetails(item)}>
@@ -137,11 +130,11 @@ export default function HistoryPage() {
         </CardContent>
       </Card>
 
-      {selectedQuestion && (
+      {selectedAnswer && (
         <HistoryDetailsDialog
-          isOpen={!!selectedQuestion}
-          onClose={() => setSelectedQuestion(null)}
-          questionDetails={selectedQuestion}
+          isOpen={!!selectedAnswer}
+          onClose={() => setSelectedAnswer(null)}
+          legalAnswer={selectedAnswer} // Prop name changed
         />
       )}
     </div>

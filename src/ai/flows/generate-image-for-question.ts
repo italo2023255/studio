@@ -1,7 +1,7 @@
-// src/ai/flows/generate-image-for-question.ts
+
 'use server';
 /**
- * @fileOverview Generates an image related to a legal question and its answer.
+ * @fileOverview Generates a conceptual image related to a legal question or cited article.
  *
  * - generateImageForQuestion - A function that generates an image.
  * - GenerateImageForQuestionInput - The input type for the generateImageForQuestion function.
@@ -12,14 +12,15 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GenerateImageForQuestionInputSchema = z.object({
-  question: z.string().describe('The legal question.'),
-  correctAnswerText: z.string().describe('The text of the correct answer to the question.'),
-  legalConcept: z.string().optional().describe('A key legal concept derived from the question or answer to help guide image generation, e.g., "Habeas Corpus", "Due Process", "Contract Law".')
+  question: z.string().describe('The user\'s original legal question.'),
+  // correctAnswerText is now the cited article or main explanation
+  correctAnswerText: z.string().describe('The core legal text or explanation that answers the question (e.g., the cited article).'),
+  legalConcept: z.string().optional().describe('A key legal concept (e.g., "Habeas Corpus", "Due Process") to guide image generation.')
 });
 export type GenerateImageForQuestionInput = z.infer<typeof GenerateImageForQuestionInputSchema>;
 
 const GenerateImageForQuestionOutputSchema = z.object({
-  imageDataUri: z.string().nullable().describe("The generated image as a data URI (e.g., 'data:image/png;base64,...'). Null if image generation fails or is not applicable."),
+  imageDataUri: z.string().url().nullable().describe("The generated image as a data URI (e.g., 'data:image/png;base64,...'). Null if image generation fails or is not applicable."),
 });
 export type GenerateImageForQuestionOutput = z.infer<typeof GenerateImageForQuestionOutputSchema>;
 
@@ -27,23 +28,25 @@ export async function generateImageForQuestion(input: GenerateImageForQuestionIn
   return generateImageForQuestionFlow(input);
 }
 
-// This flow uses a model capable of image generation.
 const generateImageForQuestionFlow = ai.defineFlow(
   {
-    name: 'generateImageForQuestionFlow',
+    name: 'generateConceptualImageFlow',
     inputSchema: GenerateImageForQuestionInputSchema,
     outputSchema: GenerateImageForQuestionOutputSchema,
   },
   async (input) => {
     try {
-      const imagePrompt = `Generate a simple, conceptual, and abstract image that visually represents the core idea of the following legal question and answer. Focus on the concept: ${input.legalConcept || 'legal justice'}. Legal context: Question: "${input.question}", Answer: "${input.correctAnswerText}". The image should be suitable for a quiz application, clean, and professional. Avoid text in the image.`;
+      const imagePrompt = `Generate a simple, clean, professional, and abstract/conceptual image that visually represents the core idea of the following legal concept or text.
+      Focus on: "${input.legalConcept || 'conceito jurídico abstrato'}".
+      Context: User asked "${input.question}". The relevant legal text/answer is related to "${input.correctAnswerText}".
+      The image should be suitable for a legal study application. Avoid text in the image. Create something symbolic or metaphorical.`;
 
       const {media, text: responseText} = await ai.generate({
-        model: 'googleai/gemini-2.0-flash-exp', // IMPORTANT: Specific model for image generation
+        model: 'googleai/gemini-2.0-flash-exp',
         prompt: imagePrompt,
         config: {
-          responseModalities: ['TEXT', 'IMAGE'], // Must request IMAGE
-           safetySettings: [ // Relax safety settings slightly if needed for legal concepts, be cautious
+          responseModalities: ['TEXT', 'IMAGE'],
+           safetySettings: [ 
             { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
             { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
             { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -59,8 +62,8 @@ const generateImageForQuestionFlow = ai.defineFlow(
         return {imageDataUri: null};
       }
     } catch (error) {
-      console.error('Error generating image for question:', error, "Input was:", input);
-      return {imageDataUri: null}; // Return null if image generation fails
+      console.error('Error generating conceptual image:', error, "Input was:", input);
+      return {imageDataUri: null};
     }
   }
 );

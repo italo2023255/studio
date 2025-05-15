@@ -3,6 +3,8 @@
 
 /**
  * @fileOverview Generates multiple-choice or true/false questions from legal text.
+ * THIS FLOW IS LIKELY DEPRECATED OR NEEDS REVISION due to the app's shift
+ * towards answering user questions directly rather than generating quizzes from provided text.
  *
  * - generateQuestions - A function that generates questions from legal text based on style and quantity.
  * - GenerateQuestionsInput - The input type for the generateQuestions function.
@@ -40,7 +42,7 @@ const QuestionObjectSchema = z.object({
       if (data.questionStyle === 'mcq5') {
         return data.options.length === 5 && data.correctAnswerIndex <= 4;
       }
-      return false; // Should not happen if questionStyle is one of the enum values
+      return false; 
     },
     {
       message: 'Options length, content, or correctAnswerIndex is inconsistent with questionStyle.',
@@ -54,11 +56,12 @@ const GenerateQuestionsOutputSchema = z.object({
 export type GenerateQuestionsOutput = z.infer<typeof GenerateQuestionsOutputSchema>;
 
 export async function generateQuestions(input: GenerateQuestionsInput): Promise<GenerateQuestionsOutput> {
+  console.warn("generateQuestions flow is likely deprecated due to app functionality shift. Consider removing or refactoring.");
   return generateQuestionsFlow(input);
 }
 
 const generateQuestionsPrompt = ai.definePrompt({
-  name: 'generateQuestionsPrompt',
+  name: 'generateQuestionsPrompt_DEPRECATED', // Renamed to indicate potential deprecation
   input: {schema: GenerateQuestionsInputSchema},
   output: {schema: GenerateQuestionsOutputSchema},
   prompt: `You are a legal expert tasked with creating questions from legal texts based on specific styles.
@@ -66,31 +69,10 @@ Generate {{numQuestions}} question(s) from the provided legal text, adhering to 
 The entire response MUST be a single JSON object with a "questions" key, and its value must be an array of question objects. Each question object in the array must conform to the schema.
 
 Instructions for each question style:
-
-1.  If 'questionStyle' is 'cespe':
-    *   Formulate an affirmative statement derived directly from the legal text. This statement will be the "question".
-    *   The "options" array MUST be exactly ["Certo", "Errado"]. Ensure these exact strings (case-insensitive matching for "Certo" and "Errado" is acceptable for the values, e.g., ["certo", "errado"] or ["Certo", "Errado"], but the semantic meaning must be preserved).
-    *   "correctAnswerIndex" must be 0 if the statement is "Certo" (factually correct according to the legal text) or 1 if the statement is "Errado" (factually incorrect).
-    *   The "explanation" must clarify why the statement is Certo or Errado, strictly referencing the "letra da lei" (the exact wording/provisions) of the provided legal text.
-    *   The "questionStyle" field in EACH output question object MUST be "cespe".
-
-2.  If 'questionStyle' is 'mcq4':
-    *   Create a multiple-choice question with four distinct answer choices.
-    *   The "options" array MUST contain these 4 string options. The option strings should contain ONLY the option text, do NOT include prefixes like 'A)', 'B)', 'C)', 'D)' in the strings themselves.
-    *   "correctAnswerIndex" must be a number from 0 to 3, corresponding to the correct option.
-    *   The "explanation" must detail why the selected answer is correct, strictly referencing the "letra da lei".
-    *   The "questionStyle" field in EACH output question object MUST be "mcq4".
-
-3.  If 'questionStyle' is 'mcq5':
-    *   Create a multiple-choice question with five distinct answer choices.
-    *   The "options" array MUST contain these 5 string options. The option strings should contain ONLY the option text, do NOT include prefixes like 'A)', 'B)', 'C)', 'D)', 'E)' in the strings themselves.
-    *   "correctAnswerIndex" must be a number from 0 to 4.
-    *   The "explanation" must detail why the selected answer is correct, strictly referencing the "letra da lei".
-    *   The "questionStyle" field in EACH output question object MUST be "mcq5".
-
-For ALL questions:
-*   Each generated question object MUST include all required fields as per the schema, especially the "questionStyle" field, matching the requested '{{questionStyle}}'.
-*   You may optionally include a "mnemonic" (string) and/or "searchLinks" (array of strings) for any question.
+(Instructions remain the same but this prompt might not be called anymore)
+1.  If 'questionStyle' is 'cespe': (Certo/Errado) ...
+2.  If 'questionStyle' is 'mcq4': (4 options) ...
+3.  If 'questionStyle' is 'mcq5': (5 options) ...
 
 Legal Text:
 {{{legalText}}}`,
@@ -98,35 +80,31 @@ Legal Text:
 
 const generateQuestionsFlow = ai.defineFlow(
   {
-    name: 'generateQuestionsFlow',
+    name: 'generateQuestionsFlow_DEPRECATED', // Renamed
     inputSchema: GenerateQuestionsInputSchema,
     outputSchema: GenerateQuestionsOutputSchema,
   },
-  async input => {
+  async (input) => {
     const result = await generateQuestionsPrompt(input);
-    const output = result.output; // Access the parsed output directly
-    const rawText = result.text; // Access the raw text response
+    const output = result.output;
+    const rawText = result.text;
 
     if (!output || !output.questions || output.questions.length === 0) {
       console.error(
-        'generateQuestionsFlow: LLM output failed to parse (Zod validation likely failed), was empty, or did not contain questions. Input:',
+        'generateQuestionsFlow_DEPRECATED: LLM output failed. Input:',
         input,
         'Raw LLM response text:',
         rawText
       );
       throw new Error(
-        'A IA falhou ao gerar as questões no formato esperado ou não gerou questões. Por favor, tente um texto legal diferente, ajuste o número de questões ou tente novamente. Verifique o console do servidor para a resposta bruta da IA, se disponível.'
+        'A IA falhou ao gerar as questões no formato esperado (Fluxo Deprecado).'
       );
     }
-     // Double-check questionStyle consistency if not fully covered by Zod refine for each item
     for (const q of output.questions) {
       if (q.questionStyle !== input.questionStyle) {
         console.warn(
-          `generateQuestionsFlow: Mismatch in questionStyle. Expected ${input.questionStyle}, got ${q.questionStyle} for question: ${q.question}. Raw LLM response text:`, rawText
+          `generateQuestionsFlow_DEPRECATED: Mismatch in questionStyle. Expected ${input.questionStyle}, got ${q.questionStyle} for question: ${q.question}.`
         );
-        // This could indicate a partial adherence by the LLM.
-        // Depending on strictness, one might throw an error here or attempt to correct.
-        // For now, we log and let it pass if the main Zod validation passed overall.
       }
     }
     return output;

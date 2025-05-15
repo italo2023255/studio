@@ -1,6 +1,7 @@
+
 'use client';
 
-import type { IAnsweredQuestion } from '@/types';
+import type { ILegalAnswer } from '@/types'; // Changed to ILegalAnswer
 import {
   Dialog,
   DialogContent,
@@ -10,104 +11,126 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Lightbulb, Link as LinkIcon, Info, FileText, CheckCircle2, XCircle } from 'lucide-react';
+import { Lightbulb, Link as LinkIcon, Info, FileText, Image as ImageIcon, MessageCircle } from 'lucide-react';
+import NextImage from 'next/image'; // Using NextImage for consistency
 
 interface HistoryDetailsDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  questionDetails: IAnsweredQuestion | null;
+  legalAnswer: ILegalAnswer | null; // Changed prop name and type
 }
 
-export function HistoryDetailsDialog({ isOpen, onClose, questionDetails }: HistoryDetailsDialogProps) {
-  if (!questionDetails) return null;
+export function HistoryDetailsDialog({ isOpen, onClose, legalAnswer }: HistoryDetailsDialogProps) {
+  if (!legalAnswer) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
-             <FileText className="text-primary h-6 w-6" /> Detalhes da Questão
+             <MessageCircle className="text-primary h-6 w-6" /> Detalhes da Consulta
           </DialogTitle>
           <DialogDescription>
-            Revisão da questão respondida em {new Date(questionDetails.timestamp).toLocaleString('pt-BR')}.
+            Revisão da consulta feita em {new Date(legalAnswer.timestamp).toLocaleString('pt-BR')}.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[calc(80vh-150px)] pr-6"> {/* Adjusted max height */}
+        <ScrollArea className="max-h-[calc(80vh-150px)] pr-6">
           <div className="space-y-6 py-4">
             <div>
-              <h3 className="font-semibold text-lg mb-1">Texto Legal Original (Contexto):</h3>
-              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap max-h-40 overflow-y-auto">
-                {questionDetails.legalTextContext}
+              <h3 className="font-semibold text-lg mb-1">Sua Pergunta:</h3>
+              <p className="text-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
+                {legalAnswer.userQuestion}
               </p>
             </div>
             <Separator/>
             <div>
-              <h3 className="font-semibold text-lg mb-1">Questão:</h3>
-              <p className="text-foreground whitespace-pre-wrap">{questionDetails.question}</p>
+              <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><FileText className="text-primary"/> Artigo de Lei Citado:</h3>
+              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
+                {legalAnswer.citedArticle}
+              </p>
             </div>
-
-            <div>
-              <h3 className="font-semibold text-lg mb-2">Opções:</h3>
-              <ul className="space-y-1">
-                {questionDetails.options.map((option, index) => (
-                  <li
-                    key={index}
-                    className={`text-sm p-2 rounded-md ${
-                      index === questionDetails.correctAnswerIndex ? 'bg-green-100 dark:bg-green-900 border border-green-300 dark:border-green-700' : ''
-                    } ${
-                      index === questionDetails.userAnswerIndex && index !== questionDetails.correctAnswerIndex ? 'bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700' : ''
-                    }`}
-                  >
-                    {option}
-                    {index === questionDetails.correctAnswerIndex && <Badge variant="outline" className="ml-2 border-green-600 text-green-700 dark:text-green-300 dark:border-green-500">Correta</Badge>}
-                    {index === questionDetails.userAnswerIndex && <Badge variant="outline" className="ml-2">Sua Resposta</Badge>}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            
-            <div className={`p-3 rounded-md ${questionDetails.isCorrect ? 'bg-green-50 dark:bg-green-900/50 border border-green-200 dark:border-green-700' : 'bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-700'}`}>
-                <div className={`flex items-center gap-2 font-semibold ${questionDetails.isCorrect ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                    {questionDetails.isCorrect ? <CheckCircle2/> : <XCircle/>}
-                    {questionDetails.isCorrect ? 'Você acertou!' : 'Você errou.'}
-                </div>
-            </div>
-
             <Separator/>
             <div>
-              <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Info className="text-primary"/> Explicação:</h3>
+              <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Info className="text-primary"/> Explicação Detalhada:</h3>
               <p className="text-muted-foreground whitespace-pre-wrap">
-                {questionDetails.enhancedExplanation || questionDetails.explanation}
+                {legalAnswer.enhancedExplanation || legalAnswer.explanation}
               </p>
             </div>
 
-            {(questionDetails.mnemonic || (questionDetails.generatedMnemonics && questionDetails.generatedMnemonics.length > 0)) && (
+            {legalAnswer.aiGeneratedImageDataUri && (
               <>
                 <Separator/>
                 <div>
-                  <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Lightbulb className="text-primary"/> Dicas e Macetes:</h3>
+                  <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><ImageIcon className="text-primary"/> Imagem Conceitual (Gerada por IA):</h3>
+                   <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 my-2">
+                        <NextImage 
+                            src={legalAnswer.aiGeneratedImageDataUri} 
+                            alt="Imagem conceitual gerada por IA" 
+                            width={300} 
+                            height={300} 
+                            className="rounded-md object-contain"
+                            data-ai-hint="legal concept abstract"
+                        />
+                    </div>
+                </div>
+              </>
+            )}
+
+            {legalAnswer.sourcedImageDescription && (
+                <>
+                <Separator/>
+                <div>
+                    <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><ImageIcon className="text-orange-500"/> Exemplo de Imagem (Fontes Especializadas):</h3>
+                    <p className="text-sm text-muted-foreground mb-2 italic">"{legalAnswer.sourcedImageDescription}"</p>
+                    {legalAnswer.sourcedImageUrl && (
+                        <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 my-2">
+                            <NextImage 
+                                src={legalAnswer.sourcedImageUrl} 
+                                alt={legalAnswer.sourcedImageDescription || "Placeholder de imagem externa"}
+                                width={300} 
+                                height={200}
+                                className="rounded-md object-cover"
+                                data-ai-hint="legal illustration diagram"
+                            />
+                        </div>
+                    )}
+                </div>
+                </>
+            )}
+
+
+            {legalAnswer.aiGeneratedMnemonics && legalAnswer.aiGeneratedMnemonics.length > 0 && (
+              <>
+                <Separator/>
+                <div>
+                  <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Lightbulb className="text-primary"/> Macetes (Gerados por IA):</h3>
                   <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                    {questionDetails.mnemonic && <li>{questionDetails.mnemonic}</li>}
-                    {questionDetails.generatedMnemonics?.map((m, i) => <li key={`hist-mne-${i}`}>{m}</li>)}
+                    {legalAnswer.aiGeneratedMnemonics.map((m, i) => <li key={`hist-ai-mne-${i}`}>{m}</li>)}
                   </ul>
                 </div>
               </>
             )}
 
-            {(questionDetails.searchLinks || (questionDetails.additionalSearchLinks && questionDetails.additionalSearchLinks.length > 0)) && (
+            {legalAnswer.sourcedMnemonic && (
+                <>
+                <Separator/>
+                <div>
+                    <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Lightbulb className="text-orange-500"/> Exemplo de Macete (Fontes Especializadas):</h3>
+                    <p className="text-muted-foreground italic">"{legalAnswer.sourcedMnemonic}"</p>
+                </div>
+                </>
+            )}
+
+            {legalAnswer.externalSearchLinks && legalAnswer.externalSearchLinks.length > 0 && (
                <>
                 <Separator/>
                 <div>
                   <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><LinkIcon className="text-primary"/> Links Úteis:</h3>
                   <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                    {questionDetails.searchLinks?.map((link, i) => (
-                      <li key={`hist-sl-${i}`}><a href={link} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">{link}</a></li>
-                    ))}
-                    {questionDetails.additionalSearchLinks?.map((link, i) => (
-                      <li key={`hist-asl-${i}`}><a href={link} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">{link}</a></li>
+                    {legalAnswer.externalSearchLinks.map((link, i) => (
+                      <li key={`hist-ext-link-${i}`}><a href={link} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">{link}</a></li>
                     ))}
                   </ul>
                 </div>
