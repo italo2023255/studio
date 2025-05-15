@@ -69,12 +69,32 @@ export default function HomePage() {
         numSimulatedExternal: fetchSimulatedExternal ? 2 : undefined,
       });
       
+      if (result.questions.length === 0) {
+        toast({
+          title: 'Nenhuma Questão Gerada',
+          description: 'A IA não retornou questões com os parâmetros fornecidos. Tente ajustar o texto ou as opções.',
+          variant: 'default'
+        });
+      } else {
+        toast({ title: 'Questões Geradas!', description: `${result.questions.length} questões foram criadas com sucesso.` });
+      }
       setGeneratedQuestions(result.questions);
 
-      toast({ title: 'Questões Geradas!', description: `${result.questions.length} questões foram criadas com sucesso.` });
     } catch (error: any) {
-      console.error('Error generating questions:', error);
-      toast({ title: 'Erro ao Gerar Questões', description: error.message || 'Ocorreu um erro inesperado. Tente novamente.', variant: 'destructive' });
+      console.error('Error generating questions (client-side):', error);
+      let description = 'Ocorreu um erro inesperado ao tentar gerar as questões. Tente novamente.';
+      // Check if the error message indicates a server-side failure, possibly API key related for deployed apps
+      if (error.message && error.message.toLowerCase().includes('falha crítica') && error.message.toLowerCase().includes('servidor')) {
+        description = 'Houve um problema ao contatar o serviço de IA. Se este aplicativo estiver implantado (ex: na Vercel), verifique se a chave de API (GOOGLE_API_KEY) está configurada corretamente nas variáveis de ambiente do projeto. Consulte os logs do servidor para mais detalhes técnicos.';
+      } else if (error.message) {
+        description = error.message; // Use the specific error message if available and not the generic one
+      }
+      toast({ 
+        title: 'Erro ao Gerar Questões', 
+        description: description, 
+        variant: 'destructive',
+        duration: 9000, // Longer duration for error messages
+      });
     } finally {
       setIsLoading(false);
     }
@@ -129,6 +149,7 @@ export default function HomePage() {
     if (!description || description.trim() === "" || /nenhuma imagem|não encontrada|não aplicável/i.test(description.toLowerCase())) {
         return defaultHint;
     }
+    // Extract up to two words from the description
     const words = description.toLowerCase().match(/[a-zA-Z0-9À-ÖØ-öø-ÿ]{3,}/g) || [];
     return words.slice(0, 2).join(' ') || defaultHint;
   };
@@ -435,3 +456,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+        
