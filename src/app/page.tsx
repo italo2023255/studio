@@ -65,8 +65,8 @@ export default function HomePage() {
         questionStyle,
         subject,
         topic,
-        fetchSimulatedExternal, 
-        numSimulatedExternal: fetchSimulatedExternal ? 2 : 0, 
+        fetchSimulatedExternal,
+        numSimulatedExternal: fetchSimulatedExternal ? 2 : undefined,
       });
       
       setGeneratedQuestions(result.questions);

@@ -132,7 +132,7 @@ export default function GenerateFromPdfPage() {
         subject,
         topic,
         fetchSimulatedExternal,
-        numSimulatedExternal: fetchSimulatedExternal ? 2 : 0,
+        numSimulatedExternal: fetchSimulatedExternal ? 2 : undefined,
       });
       
       setGeneratedQuestions(result.questions);
