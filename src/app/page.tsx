@@ -18,6 +18,7 @@ import { addAnswerToHistory } from '@/lib/localStorage';
 import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, Send, MessageCircleQuestion, Edit3, Settings2, ImageIcon as ImageIconLucide, RotateCcw, CheckCircle, XCircle, ListChecks, FileQuestion as FileQuestionIcon, Youtube } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { ClientOnly } from '@/components/ClientOnly';
 
 export default function HomePage() {
   const [legalText, setLegalText] = useState<string>('');
@@ -126,68 +127,70 @@ export default function HomePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleGenerateQuestions} className="space-y-6">
-            <div>
-              <Label htmlFor="legalText" className="text-base font-medium block mb-1">Texto Legal</Label>
-              <Textarea
-                id="legalText"
-                placeholder="Cole aqui o trecho da lei..."
-                value={legalText}
-                onChange={(e) => setLegalText(e.target.value)}
-                className="text-base min-h-[150px] resize-y"
-                disabled={isLoading}
-                rows={8}
-              />
-            </div>
+          <ClientOnly>
+            <form onSubmit={handleGenerateQuestions} className="space-y-6">
+              <div>
+                <Label htmlFor="legalText" className="text-base font-medium block mb-1">Texto Legal</Label>
+                <Textarea
+                  id="legalText"
+                  placeholder="Cole aqui o trecho da lei..."
+                  value={legalText}
+                  onChange={(e) => setLegalText(e.target.value)}
+                  className="text-base min-h-[150px] resize-y"
+                  disabled={isLoading}
+                  rows={8}
+                />
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="numQuestions" className="text-base font-medium block mb-1">Número de Questões</Label>
-                <Select
-                  value={numQuestions.toString()}
-                  onValueChange={(value) => setNumQuestions(parseInt(value))}
-                  disabled={isLoading}
-                >
-                  <SelectTrigger id="numQuestions" className="text-base">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4, 5, 10].map(n => (
-                      <SelectItem key={n} value={n.toString()}>{n} questão(ões)</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="numQuestions" className="text-base font-medium block mb-1">Número de Questões</Label>
+                  <Select
+                    value={numQuestions.toString()}
+                    onValueChange={(value) => setNumQuestions(parseInt(value))}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger id="numQuestions" className="text-base">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5, 10].map(n => (
+                        <SelectItem key={n} value={n.toString()}>{n} questão(ões)</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="questionStyle" className="text-base font-medium block mb-1">Estilo da Questão</Label>
+                  <Select
+                    value={questionStyle}
+                    onValueChange={(value) => setQuestionStyle(value as QuestionStyle)}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger id="questionStyle" className="text-base">
+                      <SelectValue placeholder="Selecione o estilo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cespe">Certo/Errado (Cespe)</SelectItem>
+                      <SelectItem value="mcq4">Múltipla Escolha (A-D)</SelectItem>
+                      <SelectItem value="mcq5">Múltipla Escolha (A-E)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="questionStyle" className="text-base font-medium block mb-1">Estilo da Questão</Label>
-                <Select
-                  value={questionStyle}
-                  onValueChange={(value) => setQuestionStyle(value as QuestionStyle)}
-                  disabled={isLoading}
-                >
-                  <SelectTrigger id="questionStyle" className="text-base">
-                    <SelectValue placeholder="Selecione o estilo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cespe">Certo/Errado (Cespe)</SelectItem>
-                    <SelectItem value="mcq4">Múltipla Escolha (A-D)</SelectItem>
-                    <SelectItem value="mcq5">Múltipla Escolha (A-E)</SelectItem>
-                  </SelectContent>
-                </Select>
+              
+              <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                <Button type="submit" disabled={isLoading || !legalText.trim()} className="w-full sm:w-auto bg-primary hover:bg-primary/90">
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                  Gerar Questões
+                </Button>
+                <Button type="button" variant="outline" onClick={handleReset} disabled={isLoading} className="w-full sm:w-auto">
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Limpar Tudo
+                </Button>
               </div>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-2 pt-2">
-              <Button type="submit" disabled={isLoading || !legalText.trim()} className="w-full sm:w-auto bg-primary hover:bg-primary/90">
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                Gerar Questões
-              </Button>
-              <Button type="button" variant="outline" onClick={handleReset} disabled={isLoading} className="w-full sm:w-auto">
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Limpar Tudo
-              </Button>
-            </div>
-          </form>
+            </form>
+          </ClientOnly>
         </CardContent>
       </Card>
 
