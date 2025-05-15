@@ -13,10 +13,8 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
-import type { QuestionStyle } from '@/types'; // BaseQuestionObjectSchema is defined in generate-questions
+import type { QuestionStyle } from '@/types'; 
 
-// Schema for a single question object as expected from this simulation
-// It's similar to BaseQuestionObjectSchema but ensures 'source' is always present and realistic.
 const SimulatedQuestionObjectSchema = z.object({
     question: z.string().describe('The question text or affirmative statement for Cespe style.'),
     options: z.array(z.string()).describe('Answer options. For "cespe", this will be ["Certo", "Errado"]. For "mcq4", 4 options. For "mcq5", 5 options. Options should contain only the text, without prefixes like "A)", "B)".'),
@@ -57,7 +55,16 @@ export type FindSimulatedExternalQuestionsOutput = z.infer<typeof FindSimulatedE
 export async function findSimulatedExternalQuestions(
   input: FindSimulatedExternalQuestionsInput
 ): Promise<FindSimulatedExternalQuestionsOutput> {
-  return findSimulatedExternalQuestionsFlow(input);
+  console.log('findSimulatedExternalQuestions flow started with input:', JSON.stringify(input));
+  try {
+    const result = await findSimulatedExternalQuestionsFlow(input);
+    console.log('findSimulatedExternalQuestions flow finished successfully.');
+    return result;
+  } catch (error) {
+    console.error('Critical error in findSimulatedExternalQuestions flow:', error, 'Input:', input);
+    // Return an empty valid response to prevent breaking the caller flow
+    return { questions: [] };
+  }
 }
 
 const prompt = ai.definePrompt({
@@ -125,14 +132,13 @@ const findSimulatedExternalQuestionsFlow = ai.defineFlow(
       console.error(
         'findSimulatedExternalQuestionsFlow: Failed to generate questions or output was invalid. Input:', input, 'Raw LLM response:', rawText
       );
-      // Fallback to empty array if generation fails
       return { questions: [] };
     }
-    // Ensure all questions have the targetQuestionStyle (sometimes LLM might miss it despite instructions)
+    
      const validatedQuestions = output.questions.map(q => ({
       ...q,
       questionStyle: input.targetQuestionStyle, 
-    })).filter(q => { // Re-validate after forcing style, because options/index might mismatch
+    })).filter(q => { 
         if (q.questionStyle === 'cespe') {
             return q.options.length === 2 && q.correctAnswerIndex >= 0 && q.correctAnswerIndex < 2;
         }
@@ -145,12 +151,10 @@ const findSimulatedExternalQuestionsFlow = ai.defineFlow(
         return false;
     });
 
-
     if (validatedQuestions.length !== output.questions.length) {
-        console.warn('findSimulatedExternalQuestionsFlow: Some questions were filtered out due to style/options mismatch after generation. Initial count:', output.questions.length, 'Final count:', validatedQuestions.length);
+        console.warn('findSimulatedExternalQuestionsFlow: Some questions were filtered out due to style/options mismatch after generation. Initial count:', output.questions.length, 'Final count:', validatedQuestions.length, 'Original output:', output.questions);
     }
     
     return { questions: validatedQuestions };
   }
 );
-
