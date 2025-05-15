@@ -15,7 +15,7 @@ import {z} from 'genkit';
 import type { QuestionStyle, IQGeneratedQuestion } from '@/types';
 import { generateMnemonics, type GenerateMnemonicsInput } from './generate-mnemonics';
 import { enhanceAnswerWithInternetSearch, type EnhanceAnswerWithInternetSearchInput, type EnhanceAnswerWithInternetSearchOutput } from './enhance-answer-with-internet-search';
-import { generateImageForQuestion, type GenerateImageForQuestionInput, type GenerateImageForQuestionOutput } from './generate-image-for-question';
+// import { generateImageForQuestion, type GenerateImageForQuestionInput, type GenerateImageForQuestionOutput } from './generate-image-for-question'; // Removed direct image generation for each question
 
 const GenerateQuestionsInputSchema = z.object({
   legalText: z.string().describe('The legal text to generate questions from.'),
@@ -33,19 +33,16 @@ const BaseQuestionObjectSchema = z.object({
     keyConceptForEnrichment: z.string().optional().describe('A 2-5 word key concept from the question/explanation, to guide mnemonic and image generation.'),
 }).refine(
     (data) => {
-      // This refinement checks basic structure. More detailed check done in EnrichedQuestionSchema using questionStyle.
-      if (data.options.length === 2) { // Cespe style implicitly by 2 options
+      if (data.options.length === 2) {
          return data.correctAnswerIndex === 0 || data.correctAnswerIndex === 1;
       }
-      if (data.options.length === 4) { // mcq4 style
+      if (data.options.length === 4) {
         return data.correctAnswerIndex >= 0 && data.correctAnswerIndex < 4;
       }
-      if (data.options.length === 5) { // mcq5 style
+      if (data.options.length === 5) {
         return data.correctAnswerIndex >= 0 && data.correctAnswerIndex < 5;
       }
-      // If options length is not 2, 4, or 5, it's likely an issue, but prompt should guide this.
-      // Returning true here to rely on primary validation by prompt for base questions.
-      return true; 
+      return true;
     },
     { message: "Base question options and correctAnswerIndex do not match the implicit question style based on options length."}
 );
@@ -71,7 +68,7 @@ const EnrichedQuestionSchema = z.object({
   questionStyle: z.enum(['cespe', 'mcq4', 'mcq5']),
   aiGeneratedMnemonics: z.array(z.string()).optional(),
   externalSearchLinks: z.array(z.string().url()).optional(),
-  aiGeneratedImageDataUri: z.string().url().nullable().optional(),
+  // aiGeneratedImageDataUri: z.string().url().nullable().optional(), // Removed: AI-generated image for this specific question is no longer default
   simulatedSourcedImageDescription: z.string().optional(),
   simulatedSourcedImageUrl: z.string().url().optional(),
   simulatedSourcedMnemonic: z.string().optional(),
@@ -85,7 +82,6 @@ const EnrichedQuestionSchema = z.object({
       case 'mcq5':
         return data.options.length === 5 && data.correctAnswerIndex >= 0 && data.correctAnswerIndex < 5;
       default:
-        // This case should ideally not be reached if questionStyle is correctly parsed by z.enum
         return false; 
     }
   },
@@ -199,16 +195,16 @@ const generateQuestionsFlow = ai.defineFlow(
           legalText: input.legalText, 
           keyConcept: keyConcept,
         };
-        const imageInput: GenerateImageForQuestionInput = {
-          question: baseQuestion.question,
-          correctAnswerText: baseQuestion.explanation, 
-          legalConcept: keyConcept,
-        };
+        // const imageInput: GenerateImageForQuestionInput = { // Removed direct image generation
+        //   question: baseQuestion.question,
+        //   correctAnswerText: baseQuestion.explanation, 
+        //   legalConcept: keyConcept,
+        // };
 
-        const [mnemonicsResult, searchResult, imageResult] = await Promise.allSettled([
+        const [mnemonicsResult, searchResult /*, imageResult */] = await Promise.allSettled([
           generateMnemonics(mnemonicInput),
           enhanceAnswerWithInternetSearch(searchInput),
-          generateImageForQuestion(imageInput),
+          // generateImageForQuestion(imageInput), // Removed direct image generation
         ]);
 
         const aiGeneratedMnemonics = mnemonicsResult.status === 'fulfilled' ? mnemonicsResult.value.mnemonics : [];
@@ -223,18 +219,18 @@ const generateQuestionsFlow = ai.defineFlow(
             };
         }
         
-        const aiGeneratedImageDataUri = imageResult.status === 'fulfilled' ? imageResult.value.imageDataUri : null;
+        // const aiGeneratedImageDataUri = imageResult.status === 'fulfilled' ? imageResult.value.imageDataUri : null; // Removed
 
         enrichedQuestions.push({
-          ...baseQuestion, // Contains: question, options, correctAnswerIndex, explanation, keyConceptForEnrichment
-          id: `${Date.now()}-q-${enrichedQuestions.length}`, // Add unique ID
-          questionStyle: input.questionStyle, // Add questionStyle from input
+          ...baseQuestion,
+          id: `${Date.now()}-q-${enrichedQuestions.length}`,
+          questionStyle: input.questionStyle,
           aiGeneratedMnemonics,
           externalSearchLinks: searchData.externalSearchLinks,
           simulatedSourcedImageDescription: searchData.simulatedSourcedImageDescription,
           simulatedSourcedImageUrl: searchData.simulatedSourcedImageUrl,
           simulatedSourcedMnemonic: searchData.simulatedSourcedMnemonic,
-          aiGeneratedImageDataUri,
+          // aiGeneratedImageDataUri, // Removed
         });
 
       } catch (enrichmentError) {
@@ -242,8 +238,7 @@ const generateQuestionsFlow = ai.defineFlow(
          enrichedQuestions.push({
           ...baseQuestion,
           id: `${Date.now()}-enricherror-${enrichedQuestions.length}`,
-          questionStyle: input.questionStyle, // Add questionStyle from input
-          // Potentially add default/empty values for other enrichment fields if needed
+          questionStyle: input.questionStyle,
         });
       }
     }
@@ -254,10 +249,6 @@ const generateQuestionsFlow = ai.defineFlow(
          console.warn(`generateQuestionsFlow: LLM did not generate the requested number of base questions. Expected ${input.numQuestions}, got ${baseQuestions.length}.`);
     }
 
-    // Before returning, ensure the output matches GenerateQuestionsOutputSchema
-    // Zod will validate this when the flow returns.
     return { questions: enrichedQuestions };
   }
 );
-
-    

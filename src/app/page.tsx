@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateQuestions } from '@/ai/flows/generate-questions';
 import type { IQGeneratedQuestion, QuestionStyle, IAnsweredQuestion } from '@/types';
 import { addAnswerToHistory } from '@/lib/localStorage';
-import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, Send, MessageCircleQuestion, Edit3, Settings2, ImageIcon as ImageIconLucide, RotateCcw, CheckCircle, XCircle, ListChecks, FileQuestion as FileQuestionIcon } from 'lucide-react';
+import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, Send, MessageCircleQuestion, Edit3, Settings2, ImageIcon as ImageIconLucide, RotateCcw, CheckCircle, XCircle, ListChecks, FileQuestion as FileQuestionIcon, Youtube } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
@@ -49,7 +49,6 @@ export default function HomePage() {
         questionStyle,
       });
       
-      // Add a unique ID to each question on the client-side for easier state management
       const questionsWithClientIds = result.questions.map((q, index) => ({
         ...q,
         id: `${Date.now()}-q${index}`, 
@@ -104,6 +103,15 @@ export default function HomePage() {
     setUserAnswers({});
     setShowFeedback({});
     setIsLoading(false);
+  };
+
+  const isYoutubeLink = (link: string) => {
+    try {
+      const url = new URL(link);
+      return url.hostname === 'www.youtube.com' || url.hostname === 'youtube.com' || url.hostname === 'youtu.be';
+    } catch (e) {
+      return false;
+    }
   };
 
   return (
@@ -265,39 +273,20 @@ export default function HomePage() {
                               </div>
                           )}
                           
-                          {q.aiGeneratedImageDataUri && (
-                            <div>
-                              <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><ImageIconLucide className="text-primary h-5 w-5"/> Imagem Conceitual (Gerada por IA)</h4>
-                              <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 max-w-xs mx-auto">
-                                <Image 
-                                    src={q.aiGeneratedImageDataUri} 
-                                    alt="Imagem conceitual gerada por IA para a questão" 
-                                    width={200} 
-                                    height={200} 
-                                    className="rounded-md object-contain"
-                                    data-ai-hint="legal concept quiz"
-                                />
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1 text-center">Imagem gerada por IA.</p>
-                            </div>
-                          )}
-
-                          {q.simulatedSourcedImageDescription && (
+                          {q.simulatedSourcedImageUrl && q.simulatedSourcedImageDescription && (
                               <div>
-                                  <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-500 h-5 w-5"/> Imagem (Simulada de Fontes)</h4>
+                                  <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400 h-5 w-5"/> Imagem (Simulada de Fontes)</h4>
                                   <p className="text-sm text-muted-foreground mb-1 italic">"{q.simulatedSourcedImageDescription}"</p>
-                                  {q.simulatedSourcedImageUrl && (
-                                      <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 max-w-xs mx-auto">
-                                          <Image 
-                                              src={q.simulatedSourcedImageUrl} 
-                                              alt={q.simulatedSourcedImageDescription} 
-                                              width={200} 
-                                              height={150}
-                                              className="rounded-md object-cover"
-                                              data-ai-hint="legal illustration study"
-                                          />
-                                      </div>
-                                  )}
+                                  <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 max-w-xs mx-auto">
+                                      <Image 
+                                          src={q.simulatedSourcedImageUrl} 
+                                          alt={q.simulatedSourcedImageDescription} 
+                                          width={200} 
+                                          height={150}
+                                          className="rounded-md object-cover"
+                                          data-ai-hint="legal illustration study"
+                                      />
+                                  </div>
                               </div>
                           )}
                           
@@ -306,7 +295,12 @@ export default function HomePage() {
                               <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><LinkIcon className="text-primary h-5 w-5"/> Links Úteis (Pesquisa Simulada)</h4>
                               <ul className="list-disc list-inside text-muted-foreground space-y-1 pl-5 text-sm">
                                 {q.externalSearchLinks.map((link, idx) => (
-                                  <li key={`ext-link-${q.id}-${idx}`}><a href={link} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">{link.startsWith('http') ? link : `http://${link}`}</a></li>
+                                  <li key={`ext-link-${q.id}-${idx}`} className="flex items-center gap-1">
+                                    {isYoutubeLink(link) && <Youtube className="h-4 w-4 text-red-600" />}
+                                    <a href={link.startsWith('http') ? link : `http://${link}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate" title={link}>
+                                      {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+                                    </a>
+                                  </li>
                                 ))}
                               </ul>
                             </div>

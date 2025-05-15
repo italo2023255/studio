@@ -13,8 +13,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Lightbulb, Link as LinkIcon, Info, FileText, Image as ImageIconLucide, MessageCircle, CheckCircle, XCircle } from 'lucide-react';
-import NextImage from 'next/image';
+import { Lightbulb, Link as LinkIcon, Info, FileText, Image as ImageIconLucide, MessageCircle, CheckCircle, XCircle, Youtube } from 'lucide-react';
+import NextImage from 'next/image'; // Renamed to NextImage to avoid conflict with lucide-react Image
 import { Badge } from '@/components/ui/badge';
 
 interface HistoryDetailsDialogProps {
@@ -34,7 +34,7 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
     questionStyle,
     aiGeneratedMnemonics,
     externalSearchLinks,
-    aiGeneratedImageDataUri,
+    // aiGeneratedImageDataUri, // Removed
     simulatedSourcedImageDescription,
     simulatedSourcedImageUrl,
     simulatedSourcedMnemonic,
@@ -49,6 +49,15 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
     if (style === 'mcq4') return 'Múltipla Escolha (4 opções)';
     if (style === 'mcq5') return 'Múltipla Escolha (5 opções)';
     return 'Desconhecido';
+  };
+
+  const isYoutubeLink = (link: string) => {
+    try {
+      const url = new URL(link);
+      return url.hostname === 'www.youtube.com' || url.hostname === 'youtube.com' || url.hostname === 'youtu.be';
+    } catch (e) {
+      return false;
+    }
   };
 
   return (
@@ -84,12 +93,12 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
             {userAnswerIndex !== null && (
                  <div>
                     <h3 className="font-semibold text-md">Sua Resposta:</h3>
-                    <p className="text-muted-foreground">{String.fromCharCode(65 + userAnswerIndex)}. {options[userAnswerIndex]}</p>
+                    <p className="text-muted-foreground">{options[userAnswerIndex] ? (questionStyle !== 'cespe' ? String.fromCharCode(65 + userAnswerIndex) + '. ' : '') + options[userAnswerIndex] : "Não disponível"}</p>
                 </div>
             )}
              <div>
                 <h3 className="font-semibold text-md">Resposta Correta:</h3>
-                <p className="text-muted-foreground">{String.fromCharCode(65 + correctAnswerIndex)}. {options[correctAnswerIndex]}</p>
+                <p className="text-muted-foreground">{options[correctAnswerIndex] ? (questionStyle !== 'cespe' ? String.fromCharCode(65 + correctAnswerIndex) + '. ' : '') + options[correctAnswerIndex] : "Não disponível"}</p>
             </div>
 
             <Separator/>
@@ -110,48 +119,25 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
               </ScrollArea>
             </div>
 
-
-            {aiGeneratedImageDataUri && (
-              <>
-                <Separator/>
-                <div>
-                  <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><ImageIconLucide className="text-primary"/> Imagem Conceitual (Gerada por IA):</h3>
-                   <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 my-2 max-w-xs mx-auto">
-                        <NextImage 
-                            src={aiGeneratedImageDataUri} 
-                            alt="Imagem conceitual gerada por IA" 
-                            width={250} 
-                            height={250} 
-                            className="rounded-md object-contain"
-                            data-ai-hint="legal concept quiz abstract"
-                        />
-                    </div>
-                </div>
-              </>
-            )}
-
-            {simulatedSourcedImageDescription && (
+            {simulatedSourcedImageUrl && simulatedSourcedImageDescription && (
                 <>
                 <Separator/>
                 <div>
-                    <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-500"/> Exemplo de Imagem (Simulada de Fontes):</h3>
+                    <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400"/> Imagem (Simulada de Fontes):</h3>
                     <p className="text-sm text-muted-foreground mb-2 italic">"{simulatedSourcedImageDescription}"</p>
-                    {simulatedSourcedImageUrl && (
-                        <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 my-2 max-w-xs mx-auto">
-                            <NextImage 
-                                src={simulatedSourcedImageUrl} 
-                                alt={simulatedSourcedImageDescription || "Placeholder de imagem externa"}
-                                width={250} 
-                                height={180}
-                                className="rounded-md object-cover"
-                                data-ai-hint="legal illustration diagram study"
-                            />
-                        </div>
-                    )}
+                    <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 my-2 max-w-xs mx-auto">
+                        <NextImage 
+                            src={simulatedSourcedImageUrl} 
+                            alt={simulatedSourcedImageDescription || "Placeholder de imagem externa"}
+                            width={250} 
+                            height={180}
+                            className="rounded-md object-cover"
+                            data-ai-hint="legal illustration diagram study"
+                        />
+                    </div>
                 </div>
                 </>
             )}
-
 
             {aiGeneratedMnemonics && aiGeneratedMnemonics.length > 0 && (
               <>
@@ -182,7 +168,12 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
                   <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><LinkIcon className="text-primary"/> Links Úteis (Pesquisa Simulada):</h3>
                   <ul className="list-disc list-inside text-muted-foreground space-y-1 pl-5">
                     {externalSearchLinks.map((link, i) => (
-                      <li key={`hist-ext-link-${i}`}><a href={link} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">{link}</a></li>
+                      <li key={`hist-ext-link-${i}`} className="flex items-center gap-1">
+                        {isYoutubeLink(link) && <Youtube className="h-4 w-4 text-red-500" />}
+                        <a href={link.startsWith('http') ? link : `http://${link}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate" title={link}>
+                            {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+                        </a>
+                      </li>
                     ))}
                   </ul>
                 </div>
