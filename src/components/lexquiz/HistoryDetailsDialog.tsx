@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { ILegalAnswer } from '@/types'; // Changed to ILegalAnswer
+import type { IAnsweredQuestion } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -13,86 +13,138 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Lightbulb, Link as LinkIcon, Info, FileText, Image as ImageIcon, MessageCircle } from 'lucide-react';
-import NextImage from 'next/image'; // Using NextImage for consistency
+import { Lightbulb, Link as LinkIcon, Info, FileText, Image as ImageIconLucide, MessageCircle, CheckCircle, XCircle } from 'lucide-react';
+import NextImage from 'next/image';
+import { Badge } from '@/components/ui/badge';
 
 interface HistoryDetailsDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  legalAnswer: ILegalAnswer | null; // Changed prop name and type
+  answeredQuestion: IAnsweredQuestion | null;
 }
 
-export function HistoryDetailsDialog({ isOpen, onClose, legalAnswer }: HistoryDetailsDialogProps) {
-  if (!legalAnswer) return null;
+export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: HistoryDetailsDialogProps) {
+  if (!answeredQuestion) return null;
+
+  const {
+    question,
+    options,
+    correctAnswerIndex,
+    explanation,
+    questionStyle,
+    aiGeneratedMnemonics,
+    externalSearchLinks,
+    aiGeneratedImageDataUri,
+    simulatedSourcedImageDescription,
+    simulatedSourcedImageUrl,
+    simulatedSourcedMnemonic,
+    legalTextContext,
+    userAnswerIndex,
+    isCorrect,
+    timestamp,
+  } = answeredQuestion;
+
+  const getQuestionStyleLabel = (style: IAnsweredQuestion['questionStyle']) => {
+    if (style === 'cespe') return 'Certo/Errado';
+    if (style === 'mcq4') return 'Múltipla Escolha (4 opções)';
+    if (style === 'mcq5') return 'Múltipla Escolha (5 opções)';
+    return 'Desconhecido';
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh]">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
-             <MessageCircle className="text-primary h-6 w-6" /> Detalhes da Consulta
+             <MessageCircle className="text-primary h-6 w-6" /> Detalhes da Questão Respondida
           </DialogTitle>
           <DialogDescription>
-            Revisão da consulta feita em {new Date(legalAnswer.timestamp).toLocaleString('pt-BR')}.
+            Revisão da questão respondida em {new Date(timestamp).toLocaleString('pt-BR')}.
+            Estilo: {getQuestionStyleLabel(questionStyle)}.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[calc(80vh-150px)] pr-6">
           <div className="space-y-6 py-4">
             <div>
-              <h3 className="font-semibold text-lg mb-1">Sua Pergunta:</h3>
+              <h3 className="font-semibold text-lg mb-1">Questão:</h3>
               <p className="text-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
-                {legalAnswer.userQuestion}
-              </p>
-            </div>
-            <Separator/>
-            <div>
-              <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><FileText className="text-primary"/> Artigo de Lei Citado:</h3>
-              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
-                {legalAnswer.citedArticle}
-              </p>
-            </div>
-            <Separator/>
-            <div>
-              <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Info className="text-primary"/> Explicação Detalhada:</h3>
-              <p className="text-muted-foreground whitespace-pre-wrap">
-                {legalAnswer.enhancedExplanation || legalAnswer.explanation}
+                {question}
               </p>
             </div>
 
-            {legalAnswer.aiGeneratedImageDataUri && (
+            {isCorrect !== null && (
+                <div className={`p-3 rounded-md flex items-center gap-2 ${isCorrect ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'}`}>
+                    {isCorrect ? <CheckCircle className="text-green-600 dark:text-green-400 h-5 w-5"/> : <XCircle className="text-red-600 dark:text-red-400 h-5 w-5"/>}
+                    <span className={`font-medium ${isCorrect ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+                        {isCorrect ? "Você acertou!" : "Você errou."}
+                    </span>
+                </div>
+            )}
+
+            {userAnswerIndex !== null && (
+                 <div>
+                    <h3 className="font-semibold text-md">Sua Resposta:</h3>
+                    <p className="text-muted-foreground">{String.fromCharCode(65 + userAnswerIndex)}. {options[userAnswerIndex]}</p>
+                </div>
+            )}
+             <div>
+                <h3 className="font-semibold text-md">Resposta Correta:</h3>
+                <p className="text-muted-foreground">{String.fromCharCode(65 + correctAnswerIndex)}. {options[correctAnswerIndex]}</p>
+            </div>
+
+            <Separator/>
+            <div>
+              <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Info className="text-primary"/> Explicação (Baseada na Lei):</h3>
+              <p className="text-muted-foreground whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
+                {explanation}
+              </p>
+            </div>
+            
+            <Separator/>
+             <div>
+              <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><FileText className="text-primary"/> Contexto Legal Fornecido:</h3>
+              <ScrollArea className="h-32 bg-muted/30 p-3 rounded-md border">
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {legalTextContext}
+                </p>
+              </ScrollArea>
+            </div>
+
+
+            {aiGeneratedImageDataUri && (
               <>
                 <Separator/>
                 <div>
-                  <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><ImageIcon className="text-primary"/> Imagem Conceitual (Gerada por IA):</h3>
-                   <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 my-2">
+                  <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><ImageIconLucide className="text-primary"/> Imagem Conceitual (Gerada por IA):</h3>
+                   <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 my-2 max-w-xs mx-auto">
                         <NextImage 
-                            src={legalAnswer.aiGeneratedImageDataUri} 
+                            src={aiGeneratedImageDataUri} 
                             alt="Imagem conceitual gerada por IA" 
-                            width={300} 
-                            height={300} 
+                            width={250} 
+                            height={250} 
                             className="rounded-md object-contain"
-                            data-ai-hint="legal concept abstract"
+                            data-ai-hint="legal concept quiz abstract"
                         />
                     </div>
                 </div>
               </>
             )}
 
-            {legalAnswer.sourcedImageDescription && (
+            {simulatedSourcedImageDescription && (
                 <>
                 <Separator/>
                 <div>
-                    <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><ImageIcon className="text-orange-500"/> Exemplo de Imagem (Fontes Especializadas):</h3>
-                    <p className="text-sm text-muted-foreground mb-2 italic">"{legalAnswer.sourcedImageDescription}"</p>
-                    {legalAnswer.sourcedImageUrl && (
-                        <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 my-2">
+                    <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-500"/> Exemplo de Imagem (Simulada de Fontes):</h3>
+                    <p className="text-sm text-muted-foreground mb-2 italic">"{simulatedSourcedImageDescription}"</p>
+                    {simulatedSourcedImageUrl && (
+                        <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 my-2 max-w-xs mx-auto">
                             <NextImage 
-                                src={legalAnswer.sourcedImageUrl} 
-                                alt={legalAnswer.sourcedImageDescription || "Placeholder de imagem externa"}
-                                width={300} 
-                                height={200}
+                                src={simulatedSourcedImageUrl} 
+                                alt={simulatedSourcedImageDescription || "Placeholder de imagem externa"}
+                                width={250} 
+                                height={180}
                                 className="rounded-md object-cover"
-                                data-ai-hint="legal illustration diagram"
+                                data-ai-hint="legal illustration diagram study"
                             />
                         </div>
                     )}
@@ -101,35 +153,35 @@ export function HistoryDetailsDialog({ isOpen, onClose, legalAnswer }: HistoryDe
             )}
 
 
-            {legalAnswer.aiGeneratedMnemonics && legalAnswer.aiGeneratedMnemonics.length > 0 && (
+            {aiGeneratedMnemonics && aiGeneratedMnemonics.length > 0 && (
               <>
                 <Separator/>
                 <div>
                   <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Lightbulb className="text-primary"/> Macetes (Gerados por IA):</h3>
-                  <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                    {legalAnswer.aiGeneratedMnemonics.map((m, i) => <li key={`hist-ai-mne-${i}`}>{m}</li>)}
+                  <ul className="list-disc list-inside text-muted-foreground space-y-1 pl-5">
+                    {aiGeneratedMnemonics.map((m, i) => <li key={`hist-ai-mne-${i}`}>{m}</li>)}
                   </ul>
                 </div>
               </>
             )}
 
-            {legalAnswer.sourcedMnemonic && (
+            {simulatedSourcedMnemonic && (
                 <>
                 <Separator/>
                 <div>
-                    <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Lightbulb className="text-orange-500"/> Exemplo de Macete (Fontes Especializadas):</h3>
-                    <p className="text-muted-foreground italic">"{legalAnswer.sourcedMnemonic}"</p>
+                    <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><Lightbulb className="text-orange-500"/> Exemplo de Macete (Simulado de Fontes):</h3>
+                    <p className="text-muted-foreground italic">"{simulatedSourcedMnemonic}"</p>
                 </div>
                 </>
             )}
 
-            {legalAnswer.externalSearchLinks && legalAnswer.externalSearchLinks.length > 0 && (
+            {externalSearchLinks && externalSearchLinks.length > 0 && (
                <>
                 <Separator/>
                 <div>
-                  <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><LinkIcon className="text-primary"/> Links Úteis:</h3>
-                  <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                    {legalAnswer.externalSearchLinks.map((link, i) => (
+                  <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><LinkIcon className="text-primary"/> Links Úteis (Pesquisa Simulada):</h3>
+                  <ul className="list-disc list-inside text-muted-foreground space-y-1 pl-5">
+                    {externalSearchLinks.map((link, i) => (
                       <li key={`hist-ext-link-${i}`}><a href={link} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">{link}</a></li>
                     ))}
                   </ul>

@@ -14,8 +14,8 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import type { QuestionStyle, IQGeneratedQuestion } from '@/types';
 import { generateMnemonics, type GenerateMnemonicsInput } from './generate-mnemonics';
-import { enhanceAnswerWithInternetSearch, type EnhanceAnswerWithInternetSearchInput } from './enhance-answer-with-internet-search'; // Assuming this output has searchLinks
-import { generateImageForQuestion, type GenerateImageForQuestionInput } from './generate-image-for-question';
+import { enhanceAnswerWithInternetSearch, type EnhanceAnswerWithInternetSearchInput, type EnhanceAnswerWithInternetSearchOutput } from './enhance-answer-with-internet-search';
+import { generateImageForQuestion, type GenerateImageForQuestionInput, type GenerateImageForQuestionOutput } from './generate-image-for-question';
 
 const GenerateQuestionsInputSchema = z.object({
   legalText: z.string().describe('The legal text to generate questions from.'),
@@ -33,13 +33,21 @@ const BaseQuestionObjectSchema = z.object({
     keyConceptForEnrichment: z.string().optional().describe('A 2-5 word key concept from the question/explanation, to guide mnemonic and image generation.'),
 }).refine(
     (data) => {
-      // Validation for options based on questionStyle is implicitly handled by the prompt now.
-      // Explicit validation for options content for Cespe:
-      if (data.options.length === 2 && !(data.options.map(o => o.toLowerCase()).includes("certo") && data.options.map(o => o.toLowerCase()).includes("errado")) ) {
-        //This refinement is tricky if the prompt itself defines the style. We'll rely on prompt for style compliance.
+      // This refinement checks basic structure. More detailed check done in EnrichedQuestionSchema using questionStyle.
+      if (data.options.length === 2) { // Cespe style implicitly by 2 options
+         return data.correctAnswerIndex === 0 || data.correctAnswerIndex === 1;
       }
+      if (data.options.length === 4) { // mcq4 style
+        return data.correctAnswerIndex >= 0 && data.correctAnswerIndex < 4;
+      }
+      if (data.options.length === 5) { // mcq5 style
+        return data.correctAnswerIndex >= 0 && data.correctAnswerIndex < 5;
+      }
+      // If options length is not 2, 4, or 5, it's likely an issue, but prompt should guide this.
+      // Returning true here to rely on primary validation by prompt for base questions.
       return true; 
-    }
+    },
+    { message: "Base question options and correctAnswerIndex do not match the implicit question style based on options length."}
 );
 
 
@@ -49,16 +57,45 @@ const BaseGenerateQuestionsOutputSchema = z.object({
 });
 
 
-// Final output schema for the entire flow, including enrichments
-const EnrichedQuestionObjectSchema = BaseQuestionObjectSchema.extend({
-  questionStyle: z.enum(['cespe', 'mcq4', 'mcq5']), // Added to each question object
+// Schema for a fully enriched question, matching IQGeneratedQuestion type
+const EnrichedQuestionSchema = z.object({
+  // Fields from BaseQuestionObjectSchema
+  question: z.string().describe('The question text or affirmative statement for Cespe style.'),
+  options: z.array(z.string()).describe('Answer options. For "cespe", this will be ["Certo", "Errado"]. For "mcq4", 4 options. For "mcq5", 5 options. Options should contain only the text, without prefixes like "A)", "B)".'),
+  correctAnswerIndex: z.number().int().min(0).describe('Index of the correct answer in the options array (0-1 for Cespe, 0-3 for mcq4, 0-4 for mcq5).'),
+  explanation: z.string().describe('Explanation of why the answer is correct, referencing the legal text strictly (letra da lei).'),
+  keyConceptForEnrichment: z.string().optional().describe('A 2-5 word key concept from the question/explanation, to guide mnemonic and image generation.'),
+  
+  // Enriched fields
+  id: z.string(), 
+  questionStyle: z.enum(['cespe', 'mcq4', 'mcq5']),
   aiGeneratedMnemonics: z.array(z.string()).optional(),
   externalSearchLinks: z.array(z.string().url()).optional(),
   aiGeneratedImageDataUri: z.string().url().nullable().optional(),
-});
+  simulatedSourcedImageDescription: z.string().optional(),
+  simulatedSourcedImageUrl: z.string().url().optional(),
+  simulatedSourcedMnemonic: z.string().optional(),
+}).refine(
+  (data) => {
+    switch (data.questionStyle) {
+      case 'cespe':
+        return data.options.length === 2 && data.correctAnswerIndex >= 0 && data.correctAnswerIndex < 2;
+      case 'mcq4':
+        return data.options.length === 4 && data.correctAnswerIndex >= 0 && data.correctAnswerIndex < 4;
+      case 'mcq5':
+        return data.options.length === 5 && data.correctAnswerIndex >= 0 && data.correctAnswerIndex < 5;
+      default:
+        // This case should ideally not be reached if questionStyle is correctly parsed by z.enum
+        return false; 
+    }
+  },
+  { message: "Enriched question's options length or correctAnswerIndex does not match the specified questionStyle." }
+);
 
+
+// Final output schema for the entire flow, using the EnrichedQuestionSchema
 const GenerateQuestionsOutputSchema = z.object({
-  questions: z.array(EnrichedQuestionObjectSchema),
+  questions: z.array(EnrichedQuestionSchema).describe('An array of fully enriched question objects.'),
 });
 export type GenerateQuestionsOutput = z.infer<typeof GenerateQuestionsOutputSchema>;
 
@@ -71,7 +108,7 @@ export async function generateQuestions(input: GenerateQuestionsInput): Promise<
 const generateBaseQuestionsPrompt = ai.definePrompt({
   name: 'generateBaseQuestionsPrompt',
   input: {schema: GenerateQuestionsInputSchema},
-  output: {schema: BaseGenerateQuestionsOutputSchema},
+  output: {schema: BaseGenerateQuestionsOutputSchema}, // LLM generates base questions first
   prompt: `Você é um especialista em criar questões de concurso a partir de textos legais, no estilo especificado.
 Gere {{numQuestions}} questão(ões) a partir do texto legal fornecido, aderindo estritamente ao estilo '{{questionStyle}}'.
 A resposta DEVE ser um objeto JSON com uma chave "questions", contendo um array de objetos de questão.
@@ -79,24 +116,24 @@ A resposta DEVE ser um objeto JSON com uma chave "questions", contendo um array 
 Instruções para cada estilo de questão:
 1.  Se 'questionStyle' for 'cespe':
     *   'question': Elabore uma afirmativa sobre o texto legal.
-    *   'options': Deve ser um array com duas strings: ["Certo", "Errado"] (ou ["Errado", "Certo"], a ordem não importa, mas o correctAnswerIndex deve corresponder).
-    *   'correctAnswerIndex': 0 se "Certo" for a resposta correta na primeira posição, 1 se "Errado" (ou vice-versa).
+    *   'options': Deve ser um array com duas strings: ["Certo", "Errado"]. A ordem pode variar (ex: ["Errado", "Certo"]), mas o 'correctAnswerIndex' deve refletir a posição da opção correta.
+    *   'correctAnswerIndex': 0 se a primeira opção no array 'options' for a correta, 1 se a segunda for.
     *   'explanation': Explicação concisa baseada na "letra da lei", justificando a resposta.
     *   'keyConceptForEnrichment': Um conceito chave de 2-5 palavras da questão/lei para guiar a geração de mnemônicos e imagens.
 2.  Se 'questionStyle' for 'mcq4':
     *   'question': Elabore uma pergunta sobre o texto legal.
-    *   'options': Array com 4 strings, sendo uma correta e três distratores plausíveis. NÃO inclua prefixos como "A)", "B)".
-    *   'correctAnswerIndex': Índice (0-3) da opção correta.
+    *   'options': Array com 4 strings, sendo uma correta e três distratores plausíveis. NÃO inclua prefixos como "A)", "B)" nas strings das opções.
+    *   'correctAnswerIndex': Índice (0-3) da opção correta no array 'options'.
     *   'explanation': Explicação baseada na "letra da lei".
     *   'keyConceptForEnrichment': Um conceito chave de 2-5 palavras.
 3.  Se 'questionStyle' for 'mcq5':
     *   'question': Elabore uma pergunta sobre o texto legal.
-    *   'options': Array com 5 strings, uma correta e quatro distratores. NÃO inclua prefixos como "A)", "B)".
-    *   'correctAnswerIndex': Índice (0-4) da opção correta.
+    *   'options': Array com 5 strings, uma correta e quatro distratores. NÃO inclua prefixos como "A)", "B)" nas strings das opções.
+    *   'correctAnswerIndex': Índice (0-4) da opção correta no array 'options'.
     *   'explanation': Explicação baseada na "letra da lei".
     *   'keyConceptForEnrichment': Um conceito chave de 2-5 palavras.
 
-Certifique-se que o JSON de saída é válido e que cada objeto de questão no array "questions" contém todas as chaves solicitadas.
+Certifique-se que o JSON de saída é válido e que cada objeto de questão no array "questions" contém todas as chaves solicitadas (question, options, correctAnswerIndex, explanation, keyConceptForEnrichment).
 A explicação deve ser estritamente baseada no texto legal fornecido.
 
 Texto Legal:
@@ -111,58 +148,63 @@ const generateQuestionsFlow = ai.defineFlow(
   {
     name: 'generateQuestionsFlow',
     inputSchema: GenerateQuestionsInputSchema,
-    outputSchema: GenerateQuestionsOutputSchema,
+    outputSchema: GenerateQuestionsOutputSchema, // Flow outputs fully enriched questions
   },
   async (input) => {
     // 1. Generate base questions
     const baseQuestionsResult = await generateBaseQuestionsPrompt(input);
+    
     if (!baseQuestionsResult.output || !baseQuestionsResult.output.questions || baseQuestionsResult.output.questions.length === 0) {
       console.error(
-        'generateQuestionsFlow: Failed to generate base questions. Input:', input, 'Raw LLM response:', baseQuestionsResult.text
+        'generateQuestionsFlow: Failed to generate base questions or output was empty. Input:', input, 'Raw LLM response:', baseQuestionsResult.text
       );
-      throw new Error('A IA falhou ao gerar as questões base no formato esperado.');
+      let parsedOutput;
+      try {
+        if (baseQuestionsResult.text) parsedOutput = JSON.parse(baseQuestionsResult.text);
+      } catch (e) { /* ignore json parse error */ }
+      console.error('generateQuestionsFlow: Parsed (or attempted) LLM output for base questions:', parsedOutput);
+      throw new Error('A IA falhou ao gerar as questões base no formato esperado. Verifique o console do servidor para mais detalhes.');
     }
 
     const baseQuestions = baseQuestionsResult.output.questions;
-    const enrichedQuestions: IQGeneratedQuestion[] = [];
+    const enrichedQuestions: IQGeneratedQuestion[] = []; 
 
     // 2. Enrich each question
     for (const baseQuestion of baseQuestions) {
       if (!baseQuestion.question || !baseQuestion.options || baseQuestion.correctAnswerIndex === undefined || !baseQuestion.explanation) {
         console.warn('Skipping enrichment for malformed base question:', baseQuestion);
-        // Add the base question with the required style, but without enrichments if it's malformed
         enrichedQuestions.push({
             ...baseQuestion,
-            question: baseQuestion.question || "Erro na questão",
+            id: `${Date.now()}-malformed-${Math.random().toString(16).slice(2)}`, 
+            question: baseQuestion.question || "Erro: Questão não gerada corretamente",
             options: baseQuestion.options || ["Erro", "Erro"],
             correctAnswerIndex: baseQuestion.correctAnswerIndex === undefined ? 0 : baseQuestion.correctAnswerIndex,
-            explanation: baseQuestion.explanation || "Erro na explicação",
-            questionStyle: input.questionStyle, // Assign the overall style
+            explanation: baseQuestion.explanation || "Erro: Explicação não gerada",
+            questionStyle: input.questionStyle, // Add questionStyle from input
         });
         continue;
       }
       
-      const keyConcept = baseQuestion.keyConceptForEnrichment || baseQuestion.question.substring(0,50); // Fallback for keyConcept
+      const keyConcept = baseQuestion.keyConceptForEnrichment || baseQuestion.question.substring(0,50); 
 
       try {
         const mnemonicInput: GenerateMnemonicsInput = {
-          legalText: input.legalText, // Provide full legal text for broader context for mnemonics
+          legalText: input.legalText, 
           question: baseQuestion.question,
-          answer: baseQuestion.explanation,
+          answer: baseQuestion.explanation, 
         };
         const searchInput: EnhanceAnswerWithInternetSearchInput = {
           question: baseQuestion.question,
-          answer: baseQuestion.explanation, // AI's explanation for the question
-          legalText: input.legalText, // Specific snippet or full text
+          answer: baseQuestion.explanation, 
+          legalText: input.legalText, 
           keyConcept: keyConcept,
         };
         const imageInput: GenerateImageForQuestionInput = {
           question: baseQuestion.question,
-          correctAnswerText: baseQuestion.explanation,
+          correctAnswerText: baseQuestion.explanation, 
           legalConcept: keyConcept,
         };
 
-        // Run enrichments in parallel
         const [mnemonicsResult, searchResult, imageResult] = await Promise.allSettled([
           generateMnemonics(mnemonicInput),
           enhanceAnswerWithInternetSearch(searchInput),
@@ -170,33 +212,52 @@ const generateQuestionsFlow = ai.defineFlow(
         ]);
 
         const aiGeneratedMnemonics = mnemonicsResult.status === 'fulfilled' ? mnemonicsResult.value.mnemonics : [];
-        const externalSearchLinks = searchResult.status === 'fulfilled' ? searchResult.value.searchLinks : [];
+        
+        let searchData: Partial<EnhanceAnswerWithInternetSearchOutput> = {};
+        if (searchResult.status === 'fulfilled' && searchResult.value) {
+            searchData = {
+                externalSearchLinks: searchResult.value.searchLinks,
+                simulatedSourcedImageDescription: searchResult.value.simulatedSourcedImageDescription,
+                simulatedSourcedImageUrl: searchResult.value.simulatedSourcedImageUrl,
+                simulatedSourcedMnemonic: searchResult.value.simulatedSourcedMnemonic,
+            };
+        }
+        
         const aiGeneratedImageDataUri = imageResult.status === 'fulfilled' ? imageResult.value.imageDataUri : null;
 
         enrichedQuestions.push({
-          ...baseQuestion,
-          questionStyle: input.questionStyle, // Add questionStyle to each question
+          ...baseQuestion, // Contains: question, options, correctAnswerIndex, explanation, keyConceptForEnrichment
+          id: `${Date.now()}-q-${enrichedQuestions.length}`, // Add unique ID
+          questionStyle: input.questionStyle, // Add questionStyle from input
           aiGeneratedMnemonics,
-          externalSearchLinks,
+          externalSearchLinks: searchData.externalSearchLinks,
+          simulatedSourcedImageDescription: searchData.simulatedSourcedImageDescription,
+          simulatedSourcedImageUrl: searchData.simulatedSourcedImageUrl,
+          simulatedSourcedMnemonic: searchData.simulatedSourcedMnemonic,
           aiGeneratedImageDataUri,
         });
 
       } catch (enrichmentError) {
         console.error('Error during question enrichment:', enrichmentError, 'Base question:', baseQuestion);
-        // Add question with available data even if enrichment fails for one part
          enrichedQuestions.push({
           ...baseQuestion,
-          questionStyle: input.questionStyle,
+          id: `${Date.now()}-enricherror-${enrichedQuestions.length}`,
+          questionStyle: input.questionStyle, // Add questionStyle from input
+          // Potentially add default/empty values for other enrichment fields if needed
         });
       }
     }
     
-    if (enrichedQuestions.length !== input.numQuestions) {
-        console.warn(`generateQuestionsFlow: Expected ${input.numQuestions} questions, but generated/enriched ${enrichedQuestions.length}.`);
-        // Potentially throw error or handle as partial success depending on requirements
+    if (enrichedQuestions.length !== input.numQuestions && baseQuestions.length === input.numQuestions) {
+        console.warn(`generateQuestionsFlow: Expected ${input.numQuestions} questions, and generated ${baseQuestions.length} base questions, but ended up with ${enrichedQuestions.length} enriched questions. Some enrichments might have failed quietly or malformed base questions were skipped partially.`);
+    } else if (baseQuestions.length !== input.numQuestions) {
+         console.warn(`generateQuestionsFlow: LLM did not generate the requested number of base questions. Expected ${input.numQuestions}, got ${baseQuestions.length}.`);
     }
 
-
+    // Before returning, ensure the output matches GenerateQuestionsOutputSchema
+    // Zod will validate this when the flow returns.
     return { questions: enrichedQuestions };
   }
 );
+
+    
