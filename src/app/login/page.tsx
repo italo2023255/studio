@@ -1,50 +1,60 @@
 
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { LogIn, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { LogIn, Chrome } from 'lucide-react'; // Chrome icon for Google
+import { signIn, useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import Link from 'next/link';
+import { Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.push('/dashboard'); // Redirect if already logged in
+    }
+  }, [status, router]);
 
-    // Simulação de chamada de API de login
-    // Em um app real, você chamaria signIn() do NextAuth aqui
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // Exemplo de como seria com NextAuth (NÃO FUNCIONAL SEM NEXTAUTH CONFIGURADO):
-    // const result = await signIn('credentials', {
-    //   redirect: false,
-    //   email,
-    //   password,
-    // });
-    // if (result?.error) {
-    //   toast({ title: 'Erro de Login', description: result.error, variant: 'destructive' });
-    // } else if (result?.ok) {
-    //   toast({ title: 'Login bem-sucedido!', description: 'Redirecionando...' });
-    //   // router.push('/dashboard'); // Redirecionar para o dashboard
-    // }
-
-    toast({
-      title: 'Login (Simulado)',
-      description: 'Funcionalidade de login real precisa ser implementada com NextAuth.js ou similar.',
-      variant: 'default',
-    });
-    console.log('Login attempt with:', { email, password });
-    setIsLoading(false);
+  const handleGoogleSignIn = async () => {
+    // You can specify a callbackUrl if you want to redirect to a specific page after login
+    const result = await signIn('google', { callbackUrl: '/dashboard' });
+    if (result?.error) {
+      toast({
+        title: 'Erro de Login com Google',
+        description: result.error === 'OAuthAccountNotLinked' 
+          ? 'Esta conta Google já está vinculada ou você tentou usar um método diferente para uma conta existente.'
+          : 'Ocorreu um erro ao tentar fazer login com o Google. Por favor, tente novamente ou verifique as configurações da sua conta Google e do aplicativo.',
+        variant: 'destructive',
+        duration: 7000,
+      });
+    }
   };
+
+  if (status === 'loading') {
+    return (
+      <div className="flex flex-col justify-center items-center min-h-[calc(100vh-200px)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Verificando autenticação...</p>
+      </div>
+    );
+  }
+  
+  // If already authenticated, don't render the login form, allow useEffect to redirect.
+  // You could also show a "Redirecting..." message here.
+  if (status === 'authenticated') {
+     return (
+      <div className="flex flex-col justify-center items-center min-h-[calc(100vh-200px)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Login bem-sucedido! Redirecionando...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -53,57 +63,16 @@ export default function LoginPage() {
           <CardTitle className="text-2xl flex items-center gap-2">
             <LogIn className="text-primary" /> Acessar DantasAI
           </CardTitle>
-          <CardDescription>Entre com suas credenciais para continuar.</CardDescription>
+          <CardDescription>Use sua conta Google para acessar o painel.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="seuemail@exemplo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={isLoading}
-                className="text-base"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="********"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading}
-                className="text-base"
-              />
-            </div>
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading}>
-              {isLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <LogIn className="mr-2 h-4 w-4" />
-              )}
-              Entrar
-            </Button>
-          </form>
+        <CardContent className="flex flex-col items-center space-y-6 pt-6">
+          <Button onClick={handleGoogleSignIn} className="w-full bg-primary hover:bg-primary/90 py-3 text-base sm:text-lg flex items-center justify-center gap-2">
+            <Chrome className="h-5 w-5" /> Entrar com Google
+          </Button>
+           <p className="text-xs text-muted-foreground text-center pt-2">
+            Ao continuar, você concorda com nossos Termos de Serviço e Política de Privacidade (exemplos).
+          </p>
         </CardContent>
-        <CardFooter className="flex-col items-start text-sm">
-           <p className="text-muted-foreground">
-            Ainda não tem uma conta?{' '}
-            <Link href="/register" className="text-primary hover:underline">
-              Registre-se aqui
-            </Link>
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Nota: Este é um formulário de login visual. A autenticação real precisa ser implementada.
-          </p>
-        </CardFooter>
       </Card>
     </div>
   );

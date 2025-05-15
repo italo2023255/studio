@@ -3,25 +3,37 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, FileType, History, BarChart3, MessageSquareText, RefreshCw, LogIn } from 'lucide-react'; // Adicionado LogIn
+import { Home, FileType, History, BarChart3, MessageSquareText, RefreshCw, LogIn, UserCircle } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
+import { useSession } from 'next-auth/react';
 
-const navItems = [
-  { href: '/', label: 'Início', icon: Home },
-  { href: '/gerar-com-pdf', label: 'PDF', icon: FileType },
-  { href: '/history', label: 'Histórico', icon: History },
-  { href: '/revisar', label: 'Revisar', icon: RefreshCw },
-  { href: '/desempenho', label: 'Desempenho', icon: BarChart3 },
-  { href: '/feedback', label: 'Feedback', icon: MessageSquareText },
-  { href: '/login', label: 'Login', icon: LogIn }, // Novo item de Login
+const navItemsBase = [
+  { href: '/', label: 'Início', icon: Home, requiresAuth: false },
+  { href: '/gerar-com-pdf', label: 'PDF', icon: FileType, requiresAuth: false },
+  { href: '/history', label: 'Histórico', icon: History, requiresAuth: false }, // Consider protecting if history is user-specific
+  { href: '/revisar', label: 'Revisar', icon: RefreshCw, requiresAuth: false }, // Consider protecting
+  { href: '/desempenho', label: 'Desempenho', icon: BarChart3, requiresAuth: false }, // Consider protecting
+  { href: '/feedback', label: 'Feedback', icon: MessageSquareText, requiresAuth: false },
 ];
 
 export function BottomNavigation() {
   const pathname = usePathname();
+  const { data: session, status } = useSession();
+
+  const navItems = [
+    ...navItemsBase,
+    status === 'authenticated' 
+      ? { href: '/dashboard', label: 'Painel', icon: UserCircle, requiresAuth: true }
+      : { href: '/login', label: 'Login', icon: LogIn, requiresAuth: false },
+  ];
+  
+  // Adjust grid columns based on number of items (max 7 for now for simplicity)
+  const gridColsClass = `grid-cols-${navItems.length > 5 ? (navItems.length > 6 ? 7 : 6) : 5}`;
+
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 h-16 border-t bg-background shadow-t-md print:hidden">
-      <div className="mx-auto grid h-full max-w-lg grid-cols-7 font-medium"> {/* Atualizado para grid-cols-7 */}
+      <div className={cn("mx-auto grid h-full max-w-lg font-medium", gridColsClass)}>
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
