@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, FileType, History, BarChart3, MessageSquareText, RefreshCw } from 'lucide-react';
+import { Home, FileType, History, BarChart3, MessageSquareText, RefreshCw, LogIn } from 'lucide-react'; // Adicionado LogIn
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -13,14 +13,15 @@ const navItems = [
   { href: '/revisar', label: 'Revisar', icon: RefreshCw },
   { href: '/desempenho', label: 'Desempenho', icon: BarChart3 },
   { href: '/feedback', label: 'Feedback', icon: MessageSquareText },
+  { href: '/login', label: 'Login', icon: LogIn }, // Novo item de Login
 ];
 
 export function BottomNavigation() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 h-16 border-t bg-background shadow-t-md">
-      <div className="mx-auto grid h-full max-w-lg grid-cols-6 font-medium"> {/* Updated to grid-cols-6 */}
+    <nav className="fixed bottom-0 left-0 right-0 z-40 h-16 border-t bg-background shadow-t-md print:hidden">
+      <div className="mx-auto grid h-full max-w-lg grid-cols-7 font-medium"> {/* Atualizado para grid-cols-7 */}
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -34,7 +35,7 @@ export function BottomNavigation() {
               aria-current={isActive ? 'page' : undefined}
             >
               <item.icon className={cn('mb-1 h-5 w-5', isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary group-focus:text-primary')} />
-              <span className={cn("text-[9px] sm:text-xs leading-tight", isActive ? "font-semibold text-primary" : "text-muted-foreground group-hover:text-primary group-focus:text-primary")}>{item.label}</span>
+              <span className={cn("text-[8px] sm:text-[10px] leading-tight", isActive ? "font-semibold text-primary" : "text-muted-foreground group-hover:text-primary group-focus:text-primary")}>{item.label}</span>
             </Link>
           );
         })}
@@ -42,4 +43,3 @@ export function BottomNavigation() {
     </nav>
   );
 }
-
