@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { getHistory, saveHistory } from '@/lib/localStorage';
 import type { IAnsweredQuestion } from '@/types';
 import { HistoryDetailsDialog } from '@/components/lexquiz/HistoryDetailsDialog';
-import { Eye, ListChecks, Trash2, RefreshCwSquare, CheckCircle, XCircle, Filter, BookOpen, Tag, AlertTriangle, Repeat, RotateCcw } from 'lucide-react';
+import { Eye, ListChecks, Trash2, RefreshCw, CheckCircle, XCircle, Filter, BookOpen, Tag, AlertTriangle, Repeat, RotateCcw, ImageIcon as ImageIconLucide } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,8 +37,9 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Alert } from '@/components/ui/alert';
+import { Alert, AlertDescription as ReviewAlertDescription } from '@/components/ui/alert'; // Renamed AlertDescription to avoid conflict
 import Image from 'next/image';
+import { Info } from 'lucide-react'; // Added Info icon import
 
 const ALL_ITEMS_VALUE = "_all_";
 
@@ -128,7 +129,7 @@ export default function ReviewPage() {
   if (!isMounted) {
     return (
       <div className="flex justify-center items-center h-64">
-        <RefreshCwSquare className="h-12 w-12 text-primary animate-pulse" />
+        <RefreshCw className="h-12 w-12 text-primary animate-pulse" />
         <p className="ml-4 text-xl text-muted-foreground">Carregando questões para revisão...</p>
       </div>
     );
@@ -139,7 +140,7 @@ export default function ReviewPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl flex items-center gap-2">
-            <RefreshCwSquare className="text-primary" /> Revisar Questões
+            <RefreshCw className="text-primary" /> Revisar Questões
           </CardTitle>
           <CardDescription>Filtre suas questões salvas, revise seus erros e reforce seu aprendizado.</CardDescription>
         </CardHeader>
@@ -331,7 +332,7 @@ export default function ReviewPage() {
                   <p className="text-sm"><strong>Resposta correta:</strong> {questionToReview.options[questionToReview.correctAnswerIndex]}</p>
                   <Alert variant="default" className="bg-muted/50">
                     <Info className="h-4 w-4" />
-                    <ReviewDialogDescription className="whitespace-pre-wrap text-sm">{questionToReview.explanation}</ReviewDialogDescription>
+                    <ReviewAlertDescription className="whitespace-pre-wrap text-sm">{questionToReview.explanation}</ReviewAlertDescription>
                   </Alert>
                   {questionToReview.simulatedSourcedImageUrl && questionToReview.simulatedSourcedImageDescription && (
                     <div>
@@ -365,3 +366,5 @@ export default function ReviewPage() {
     </div>
   );
 }
+
+    
