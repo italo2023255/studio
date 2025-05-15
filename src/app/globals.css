@@ -15,24 +15,26 @@ body {
     --popover: 0 0% 100%;
     --popover-foreground: 224 71.4% 4.1%;
     --primary: 217 91.2% 59.8%; /* Blue */
-    --primary-foreground: 0 0% 98%; /* White */
+    --primary-foreground: 0 0% 98%; /* Almost White (for text on Blue buttons) */
     --secondary: 220 14.3% 95.9%; /* Light Gray */
-    --secondary-foreground: 224 71.4% 4.1%; /* Dark Blue-Gray */
+    --secondary-foreground: 224 71.4% 4.1%; /* Dark Blue-Gray (text on Light Gray) */
     --muted: 220 14.3% 95.9%; /* Light Gray */
     --muted-foreground: 220 8.9% 46.1%; /* Medium Gray */
-    --accent: 180 100% 25%; /* Teal #008080 */
-    --accent-foreground: 0 0% 98%; /* White for text on Teal */
+    --accent: 180 100% 25%; /* Teal (#008080) */
+    --accent-foreground: 0 0% 98%; /* Almost White (for text on Teal) */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 220 13% 91%; /* Light Gray Border */
     --input: 220 13% 91%; /* Light Gray Input */
-    --ring: 180 100% 25%; /* Teal #008080 for focus rings */
+    --ring: 180 100% 25%; /* Teal (#008080) for focus rings */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+
+    /* Light Mode Sidebar Colors */
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
@@ -40,42 +42,44 @@ body {
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 217 91.2% 59.8%; /* Blue */
   }
 
   .dark {
     --background: 224 71.4% 4.1%; /* Dark Blue-Gray */
-    --foreground: 0 0% 98%; /* White */
-    --card: 224 71.4% 4.1%;
-    --card-foreground: 0 0% 98%;
-    --popover: 224 71.4% 4.1%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 217 91.2% 59.8%; /* Blue */
-    --primary-foreground: 224 71.4% 4.1%; /* Dark Blue-Gray for text on blue */
+    --foreground: 0 0% 98%; /* Almost White */
+    --card: 224 71.4% 4.1%; /* Dark Blue-Gray */
+    --card-foreground: 0 0% 98%; /* Almost White */
+    --popover: 224 71.4% 4.1%; /* Dark Blue-Gray */
+    --popover-foreground: 0 0% 98%; /* Almost White */
+    --primary: 217 91.2% 59.8%; /* Blue (same as light mode) */
+    --primary-foreground: 224 71.4% 4.1%; /* Dark Blue-Gray (for text on Blue buttons in dark mode) */
     --secondary: 215 27.9% 16.9%; /* Darker Gray */
-    --secondary-foreground: 0 0% 98%;
-    --muted: 215 27.9% 16.9%;
+    --secondary-foreground: 0 0% 98%; /* Almost White */
+    --muted: 215 27.9% 16.9%; /* Darker Gray */
     --muted-foreground: 217.9 10.6% 64.9%; /* Lighter Gray for muted text */
-    --accent: 180 100% 30%; /* Lighter Teal for dark mode e.g. #009999 */
-    --accent-foreground: 0 0% 98%; /* White on Teal */
+    --accent: 180 100% 30%; /* Lighter Teal (e.g., #009999) */
+    --accent-foreground: 0 0% 98%; /* Almost White (for text on Teal) */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 215 27.9% 16.9%; /* Darker Gray Border */
     --input: 215 27.9% 16.9%; /* Darker Gray Input */
-    --ring: 180 100% 30%; /* Lighter Teal for focus rings in dark mode */
+    --ring: 180 100% 30%; /* Lighter Teal for focus rings */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+
+    /* Dark Mode Sidebar Colors */
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary: 224.3 76.3% 48%; /* Specific Blue for dark sidebar primary */
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 217 91.2% 59.8%; /* Blue */
   }
 }
 
