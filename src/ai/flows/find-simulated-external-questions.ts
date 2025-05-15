@@ -55,15 +55,14 @@ export type FindSimulatedExternalQuestionsOutput = z.infer<typeof FindSimulatedE
 export async function findSimulatedExternalQuestions(
   input: FindSimulatedExternalQuestionsInput
 ): Promise<FindSimulatedExternalQuestionsOutput> {
-  console.log('findSimulatedExternalQuestions flow started with input:', JSON.stringify(input));
+  console.log('findSimulatedExternalQuestions: Called with input:', JSON.stringify(input, null, 2));
   try {
     const result = await findSimulatedExternalQuestionsFlow(input);
-    console.log('findSimulatedExternalQuestions flow finished successfully.');
+    console.log('findSimulatedExternalQuestions: Flow finished successfully. Output question count:', result.questions.length);
     return result;
-  } catch (error) {
-    console.error('Critical error in findSimulatedExternalQuestions flow:', error, 'Input:', input);
-    // Return an empty valid response to prevent breaking the caller flow
-    return { questions: [] };
+  } catch (error: any) {
+    console.error('findSimulatedExternalQuestions: CRITICAL ERROR in flow execution:', error.message, error.stack, 'Input:', input);
+    return { questions: [] }; // Ensure a valid, empty response on critical failure
   }
 }
 
@@ -126,35 +125,43 @@ const findSimulatedExternalQuestionsFlow = ai.defineFlow(
     inputSchema: FindSimulatedExternalQuestionsInputSchema,
     outputSchema: FindSimulatedExternalQuestionsOutputSchema,
   },
-  async (input) => {
-    const {output, text: rawText} = await prompt(input);
-    if (!output || !output.questions || output.questions.length === 0) {
-      console.error(
-        'findSimulatedExternalQuestionsFlow: Failed to generate questions or output was invalid. Input:', input, 'Raw LLM response:', rawText
-      );
-      return { questions: [] };
-    }
-    
-     const validatedQuestions = output.questions.map(q => ({
-      ...q,
-      questionStyle: input.targetQuestionStyle, 
-    })).filter(q => { 
-        if (q.questionStyle === 'cespe') {
-            return q.options.length === 2 && q.correctAnswerIndex >= 0 && q.correctAnswerIndex < 2;
-        }
-        if (q.questionStyle === 'mcq4') {
-            return q.options.length === 4 && q.correctAnswerIndex >= 0 && q.correctAnswerIndex < 4;
-        }
-        if (q.questionStyle === 'mcq5') {
-            return q.options.length === 5 && q.correctAnswerIndex >= 0 && q.correctAnswerIndex < 5;
-        }
-        return false;
-    });
+  async (input): Promise<FindSimulatedExternalQuestionsOutput> => {
+    console.log('findSimulatedExternalQuestionsFlow: Started with input:', JSON.stringify(input, null, 2));
+    try {
+      const {output, text: rawText} = await prompt(input);
+      if (!output || !output.questions || output.questions.length === 0) {
+        console.warn(
+          'findSimulatedExternalQuestionsFlow: Failed to generate questions or output was invalid/empty. Raw LLM response:', rawText, '. Input was:', input
+        );
+        return { questions: [] };
+      }
+      
+       const validatedQuestions = output.questions.map(q => ({
+        ...q,
+        questionStyle: input.targetQuestionStyle, 
+      })).filter(q => { 
+          if (q.questionStyle === 'cespe') {
+              return q.options.length === 2 && q.correctAnswerIndex >= 0 && q.correctAnswerIndex < 2;
+          }
+          if (q.questionStyle === 'mcq4') {
+              return q.options.length === 4 && q.correctAnswerIndex >= 0 && q.correctAnswerIndex < 4;
+          }
+          if (q.questionStyle === 'mcq5') {
+              return q.options.length === 5 && q.correctAnswerIndex >= 0 && q.correctAnswerIndex < 5;
+          }
+          console.warn('findSimulatedExternalQuestionsFlow: Question filtered out due to unknown style during validation:', JSON.stringify(q, null, 2));
+          return false;
+      });
 
-    if (validatedQuestions.length !== output.questions.length) {
-        console.warn('findSimulatedExternalQuestionsFlow: Some questions were filtered out due to style/options mismatch after generation. Initial count:', output.questions.length, 'Final count:', validatedQuestions.length, 'Original output:', output.questions);
+      if (validatedQuestions.length !== output.questions.length) {
+          console.warn('findSimulatedExternalQuestionsFlow: Some questions were filtered out due to style/options mismatch after generation. Initial count:', output.questions.length, 'Final count:', validatedQuestions.length, '. Original output questions:', JSON.stringify(output.questions, null, 2));
+      }
+      console.log('findSimulatedExternalQuestionsFlow: Successfully processed. Returning question count:', validatedQuestions.length);
+      return { questions: validatedQuestions };
+    } catch (error: any) {
+      console.error('findSimulatedExternalQuestionsFlow: CRITICAL error during flow execution:', error.message, error.stack, '. Input was:', input);
+      return { questions: [] }; // Ensure a valid, empty response on critical failure
     }
-    
-    return { questions: validatedQuestions };
   }
 );
+

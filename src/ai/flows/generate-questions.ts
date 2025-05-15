@@ -101,17 +101,14 @@ export type GenerateQuestionsOutput = z.infer<typeof GenerateQuestionsOutputSche
 
 
 export async function generateQuestions(input: GenerateQuestionsInput): Promise<GenerateQuestionsOutput> {
-  console.log('generateQuestions flow started with input:', JSON.stringify(input));
+  console.log('generateQuestions: Called with input:', JSON.stringify(input, null, 2));
   try {
     const result = await generateQuestionsFlow(input);
-    console.log('generateQuestions flow finished successfully.');
+    console.log('generateQuestions: Flow finished successfully. Output question count:', result.questions.length);
     return result;
-  } catch (error) {
-    console.error('Critical error in generateQuestions flow:', error);
-    // Rethrow the error or return a structured error response
-    // For now, rethrowing to let the client handle a generic server error
-    // In a more mature app, you might return a specific error structure.
-    throw error; 
+  } catch (error: any) {
+    console.error('generateQuestions: CRITICAL ERROR in generateQuestionsFlow execution:', error.message, error.stack);
+    throw new Error(`Failed to generate questions due to a server-side issue. Please check server logs for details. Original error: ${error.message}`);
   }
 }
 
@@ -158,29 +155,34 @@ const generateQuestionsFlow = ai.defineFlow(
     inputSchema: GenerateQuestionsInputSchema,
     outputSchema: GenerateQuestionsOutputSchema,
   },
-  async (input) => {
-    let allBaseQuestions: (z.infer<typeof BaseQuestionObjectSchema> & { source: string, questionStyle: GenerateQuestionsInput['questionStyle'] })[] = [];
+  async (input): Promise<GenerateQuestionsOutput> => {
+    console.log('generateQuestionsFlow: Started with input:', JSON.stringify(input, null, 2));
+    let allBaseQuestions: (z.infer<typeof BaseQuestionObjectSchema> & { source: string; questionStyle: GenerateQuestionsInput['questionStyle'] })[] = [];
 
     // 1. Generate INÉDITA DANTASAI questions
-    try {
-      console.log('Attempting to generate INÉDITA DANTASAI questions...');
-      const {output: ineditaOutput, text: ineditaRawText} = await generateBaseQuestionsPrompt(input);
-      if (ineditaOutput && ineditaOutput.questions) {
-        allBaseQuestions.push(
-          ...ineditaOutput.questions.map(q => ({ 
+    if (input.numQuestions > 0) {
+      try {
+        console.log('generateQuestionsFlow: Attempting to generate INÉDITA DANTASAI questions...');
+        const {output: ineditaOutput, text: ineditaRawText} = await generateBaseQuestionsPrompt(input);
+        if (ineditaOutput && ineditaOutput.questions && ineditaOutput.questions.length > 0) {
+          allBaseQuestions.push(
+            ...ineditaOutput.questions.map(q => ({ 
               ...q, 
               source: "INÉDITA DANTASAI",
               questionStyle: input.questionStyle 
-          }))
-        );
-        console.log(`Successfully generated ${ineditaOutput.questions.length} INÉDITA DANTASAI questions.`);
-      } else {
-        console.warn('generateQuestionsFlow: Failed to generate INÉDITA DANTASAI questions or output was malformed. Raw LLM response:', ineditaRawText, 'Input:', input);
+            }))
+          );
+          console.log(`generateQuestionsFlow: Successfully generated ${ineditaOutput.questions.length} INÉDITA DANTASAI questions.`);
+        } else {
+          console.warn('generateQuestionsFlow: Failed to generate INÉDITA DANTASAI questions or output was malformed. Raw LLM response was:', ineditaRawText, '. Input was:', input);
+        }
+      } catch (error: any) {
+        console.error('generateQuestionsFlow: Error during INÉDITA DANTASAI question generation:', error.message, error.stack, '. Input was:', input);
       }
-    } catch (error) {
-      console.error('Error during INÉDITA DANTASAI question generation:', error, 'Input:', input);
-      // Optionally, rethrow or handle to allow partial results if only this part fails
+    } else {
+        console.log('generateQuestionsFlow: Skipping INÉDITA DANTASAI generation as numQuestions is 0 or less.');
     }
+
 
     // 2. Fetch/Generate SIMULATED EXTERNAL questions if requested
     if (input.fetchSimulatedExternal && (input.numSimulatedExternal || 0) > 0) {
@@ -188,38 +190,42 @@ const generateQuestionsFlow = ai.defineFlow(
         legalText: input.legalText,
         subject: input.subject,
         topic: input.topic,
-        numQuestions: input.numSimulatedExternal || 2,
+        numQuestions: input.numSimulatedExternal!, 
         targetQuestionStyle: input.questionStyle, 
       };
       try {
-        console.log('Attempting to generate SIMULATED EXTERNAL questions...');
+        console.log('generateQuestionsFlow: Attempting to generate SIMULATED EXTERNAL questions with input:', JSON.stringify(externalInput, null, 2));
         const externalResult = await findSimulatedExternalQuestions(externalInput);
         if (externalResult.questions && externalResult.questions.length > 0) {
           allBaseQuestions.push(...externalResult.questions.map(q => ({...q, questionStyle: q.questionStyle || input.questionStyle }))); 
-          console.log(`Successfully generated ${externalResult.questions.length} SIMULATED EXTERNAL questions.`);
+          console.log(`generateQuestionsFlow: Successfully generated ${externalResult.questions.length} SIMULATED EXTERNAL questions.`);
         } else {
           console.warn('generateQuestionsFlow: No SIMULATED EXTERNAL questions were generated or returned.', 'Input to findSimulatedExternalQuestions:', externalInput);
         }
-      } catch (e) {
-         console.error('generateQuestionsFlow: Error fetching/generating simulated external questions:', e, 'Input:', externalInput);
+      } catch (e: any) {
+         console.error('generateQuestionsFlow: Error fetching/generating simulated external questions:', e.message, e.stack, '. Input was:', externalInput);
       }
+    } else {
+        console.log('generateQuestionsFlow: Skipping SIMULATED EXTERNAL question generation.');
     }
+
+    console.log(`generateQuestionsFlow: Total base questions generated before enrichment: ${allBaseQuestions.length}`);
     
     if (allBaseQuestions.length === 0) {
-       const errorMsg = 'A IA falhou ao gerar as questões base (INÉDITA DANTASAI e/ou Semelhantes). Verifique o console do servidor para mais detalhes.';
-       console.error(errorMsg, 'Input to generateQuestionsFlow:', input);
-       // For now, returning an empty array to satisfy the schema, but ideally, throw a more specific error
-       // that the client can interpret. However, the top-level try/catch in generateQuestions will handle this.
-       // throw new Error(errorMsg); 
-       return { questions: [] }; // Return empty to fulfill schema if no questions generated at all
+       const errorMsg = 'A IA falhou ao gerar as questões base (INÉDITA DANTASAI e/ou Semelhantes). Nenhuma questão foi gerada.';
+       console.warn(errorMsg, 'Input to generateQuestionsFlow:', input);
+       return { questions: [] }; 
     }
 
     const enrichedQuestions: IQGeneratedQuestion[] = []; 
+    console.log('generateQuestionsFlow: Starting enrichment for base questions...');
 
-    // 3. Enrich ALL questions
-    for (const baseQuestion of allBaseQuestions) {
+    for (let i = 0; i < allBaseQuestions.length; i++) {
+      const baseQuestion = allBaseQuestions[i];
+      console.log(`generateQuestionsFlow: Enriching base question ${i + 1}/${allBaseQuestions.length}: ${baseQuestion.question.substring(0,30)}...`);
+
       if (!baseQuestion.question || !baseQuestion.options || baseQuestion.correctAnswerIndex === undefined || !baseQuestion.explanation) {
-        console.warn('Skipping enrichment for malformed base question:', baseQuestion);
+        console.warn('generateQuestionsFlow: Skipping enrichment for malformed base question:', JSON.stringify(baseQuestion, null, 2));
         enrichedQuestions.push({
             ...baseQuestion,
             id: `${Date.now()}-malformed-${Math.random().toString(16).slice(2)}`, 
@@ -231,15 +237,25 @@ const generateQuestionsFlow = ai.defineFlow(
             source: baseQuestion.source || "Erro: Fonte Desconhecida",
             subject: input.subject,
             topic: input.topic,
+            aiGeneratedMnemonics: [],
+            externalSearchLinks: [],
+            simulatedSourcedImageDescription: "Nenhuma imagem conceitual relevante para este tema.",
+            simulatedSourcedImageUrl: undefined,
+            simulatedSourcedMnemonic: undefined,
         });
         continue;
       }
       
       const keyConcept = baseQuestion.keyConceptForEnrichment || baseQuestion.question.substring(0,50); 
-      let enrichedData: Partial<IQGeneratedQuestion> = {};
+      let currentEnrichedData: Partial<IQGeneratedQuestion> = {
+         aiGeneratedMnemonics: [],
+         externalSearchLinks: [],
+         simulatedSourcedImageDescription: "Nenhuma imagem conceitual relevante para este tema.",
+         simulatedSourcedMnemonic: undefined,
+         simulatedSourcedImageUrl: undefined
+      };
 
       try {
-        console.log(`Enriching question ID (temp): ${baseQuestion.source} - ${baseQuestion.question.substring(0,20)}...`);
         const mnemonicInput: GenerateMnemonicsInput = {
           legalText: input.legalText, 
           question: baseQuestion.question,
@@ -252,39 +268,50 @@ const generateQuestionsFlow = ai.defineFlow(
           keyConcept: keyConcept,
         };
 
-        const [mnemonicsResult, searchResult] = await Promise.allSettled([
+        const enrichmentPromises = [
           generateMnemonics(mnemonicInput),
           enhanceAnswerWithInternetSearch(searchInput),
-        ]);
+        ];
 
-        if (mnemonicsResult.status === 'fulfilled') {
-          enrichedData.aiGeneratedMnemonics = mnemonicsResult.value.mnemonics;
-        } else {
-          console.warn('Mnemonic generation failed for a question:', mnemonicsResult.reason);
-          enrichedData.aiGeneratedMnemonics = [];
+        const results = await Promise.allSettled(enrichmentPromises);
+
+        const mnemonicsResult = results[0];
+        const searchResult = results[1];
+
+        if (mnemonicsResult.status === 'fulfilled' && mnemonicsResult.value) {
+          currentEnrichedData.aiGeneratedMnemonics = mnemonicsResult.value.mnemonics;
+        } else if (mnemonicsResult.status === 'rejected'){
+          console.warn(`generateQuestionsFlow: Mnemonic generation failed for question "${baseQuestion.question.substring(0,30)}...":`, mnemonicsResult.reason);
         }
         
         if (searchResult.status === 'fulfilled' && searchResult.value) {
-            enrichedData.externalSearchLinks = searchResult.value.searchLinks;
-            enrichedData.simulatedSourcedImageDescription = searchResult.value.simulatedSourcedImageDescription;
-            enrichedData.simulatedSourcedImageUrl = searchResult.value.simulatedSourcedImageUrl;
-            enrichedData.simulatedSourcedMnemonic = searchResult.value.simulatedSourcedMnemonic;
+            currentEnrichedData.externalSearchLinks = searchResult.value.searchLinks || [];
+            currentEnrichedData.simulatedSourcedImageDescription = searchResult.value.simulatedSourcedImageDescription || "Nenhuma imagem conceitual relevante para este tema.";
+            currentEnrichedData.simulatedSourcedImageUrl = searchResult.value.simulatedSourcedImageUrl;
+            currentEnrichedData.simulatedSourcedMnemonic = searchResult.value.simulatedSourcedMnemonic;
         } else if (searchResult.status === 'rejected') {
-             console.warn('Internet search enhancement failed for a question:', searchResult.reason);
+             console.warn(`generateQuestionsFlow: Internet search enhancement failed for question "${baseQuestion.question.substring(0,30)}...":`, searchResult.reason);
         }
         
-        enrichedQuestions.push({
+        const finalEnrichedQuestion: IQGeneratedQuestion = {
           ...baseQuestion,
           id: `${Date.now()}-q-${enrichedQuestions.length}-${Math.random().toString(16).slice(2)}`,
           questionStyle: baseQuestion.questionStyle, 
           source: baseQuestion.source, 
           subject: input.subject,
           topic: input.topic,
-          ...enrichedData,
-        });
+          ...currentEnrichedData,
+          aiGeneratedMnemonics: currentEnrichedData.aiGeneratedMnemonics || [],
+          externalSearchLinks: currentEnrichedData.externalSearchLinks || [],
+          simulatedSourcedImageDescription: currentEnrichedData.simulatedSourcedImageDescription || "Nenhuma imagem conceitual relevante para este tema.",
+          simulatedSourcedImageUrl: currentEnrichedData.simulatedSourcedImageUrl,
+          simulatedSourcedMnemonic: currentEnrichedData.simulatedSourcedMnemonic,
+        };
+        enrichedQuestions.push(finalEnrichedQuestion);
+        console.log(`generateQuestionsFlow: Successfully enriched question ${i + 1}`);
 
-      } catch (enrichmentError) {
-        console.error('Critical error during question enrichment loop:', enrichmentError, 'Base question:', baseQuestion);
+      } catch (enrichmentError: any) {
+        console.error(`generateQuestionsFlow: CRITICAL error during individual question enrichment for "${baseQuestion.question.substring(0,30)}...":`, enrichmentError.message, enrichmentError.stack);
          enrichedQuestions.push({
           ...baseQuestion,
           id: `${Date.now()}-enricherror-${enrichedQuestions.length}-${Math.random().toString(16).slice(2)}`,
@@ -292,20 +319,23 @@ const generateQuestionsFlow = ai.defineFlow(
           source: baseQuestion.source,
           subject: input.subject,
           topic: input.topic,
-          // Add empty enrichments to satisfy schema if all else fails
           aiGeneratedMnemonics: [],
           externalSearchLinks: [],
+          simulatedSourcedImageDescription: "Nenhuma imagem conceitual relevante para este tema.",
+          simulatedSourcedImageUrl: undefined,
+          simulatedSourcedMnemonic: undefined,
         });
       }
     }
     
     if (enrichedQuestions.length === 0 && allBaseQuestions.length > 0) {
-         console.warn(`generateQuestionsFlow: All base questions were generated but all failed enrichment. Base count: ${allBaseQuestions.length}`);
+         console.warn(`generateQuestionsFlow: All base questions were generated (${allBaseQuestions.length}) but all failed enrichment or were malformed.`);
     } else if (enrichedQuestions.length < allBaseQuestions.length) {
          console.warn(`generateQuestionsFlow: Some questions failed enrichment. Base count: ${allBaseQuestions.length}, Enriched count: ${enrichedQuestions.length}`);
     }
 
-    console.log(`generateQuestionsFlow successfully processed. Total enriched questions: ${enrichedQuestions.length}`);
+    console.log(`generateQuestionsFlow: Finalizing. Total enriched questions to be returned: ${enrichedQuestions.length}`);
     return { questions: enrichedQuestions };
   }
 );
+
