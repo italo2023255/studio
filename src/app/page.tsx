@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -15,13 +16,15 @@ import { useToast } from '@/hooks/use-toast';
 import { generateQuestions } from '@/ai/flows/generate-questions';
 import type { IQGeneratedQuestion, QuestionStyle, IAnsweredQuestion } from '@/types';
 import { addAnswerToHistory } from '@/lib/localStorage';
-import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, Send, MessageCircleQuestion, Edit3, Settings2, ImageIcon as ImageIconLucide, RotateCcw, CheckCircle, XCircle, ListChecks, FileQuestion as FileQuestionIcon, Youtube } from 'lucide-react';
+import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, Send, MessageCircleQuestion, Edit3, Settings2, ImageIcon as ImageIconLucide, RotateCcw, CheckCircle, XCircle, ListChecks, FileQuestion as FileQuestionIcon, Youtube, BookOpen, Tag } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ClientOnly } from '@/components/ClientOnly';
 
 export default function HomePage() {
   const [legalText, setLegalText] = useState<string>('');
+  const [subject, setSubject] = useState<string>('');
+  const [topic, setTopic] = useState<string>('');
   const [numQuestions, setNumQuestions] = useState<number>(1);
   const [questionStyle, setQuestionStyle] = useState<QuestionStyle>('cespe');
   const [generatedQuestions, setGeneratedQuestions] = useState<IQGeneratedQuestion[]>([]);
@@ -37,6 +40,15 @@ export default function HomePage() {
       toast({ title: 'Texto Legal Ausente', description: 'Por favor, insira o texto legal para gerar questões.', variant: 'destructive' });
       return;
     }
+    if (!subject.trim()) {
+      toast({ title: 'Matéria Ausente', description: 'Por favor, insira o nome da matéria.', variant: 'destructive' });
+      return;
+    }
+     if (!topic.trim()) {
+      toast({ title: 'Tópico Ausente', description: 'Por favor, insira o tópico da matéria.', variant: 'destructive' });
+      return;
+    }
+
 
     setIsLoading(true);
     setGeneratedQuestions([]);
@@ -52,7 +64,9 @@ export default function HomePage() {
       
       const questionsWithClientIds = result.questions.map((q, index) => ({
         ...q,
-        id: `${Date.now()}-q${index}`, 
+        id: `${Date.now()}-q${index}`,
+        subject: subject, // Add subject
+        topic: topic,     // Add topic
       }));
       setGeneratedQuestions(questionsWithClientIds);
 
@@ -84,6 +98,8 @@ export default function HomePage() {
       userAnswerIndex,
       isCorrect,
       timestamp: Date.now(),
+      subject: question.subject,
+      topic: question.topic,
     };
     addAnswerToHistory(answeredQuestion);
 
@@ -98,6 +114,8 @@ export default function HomePage() {
   
   const handleReset = () => {
     setLegalText('');
+    setSubject('');
+    setTopic('');
     setNumQuestions(1);
     setQuestionStyle('cespe');
     setGeneratedQuestions([]);
@@ -128,12 +146,37 @@ export default function HomePage() {
             <Edit3 className="text-primary" /> Gerador de Questões Jurídicas
           </CardTitle>
           <CardDescription>
-            Insira um trecho de lei, escolha o número e o estilo das questões, e a IA criará um quiz para você com explicações, macetes e mais.
+            Insira a matéria, o tópico, um trecho de lei, escolha o número e o estilo das questões, e a IA criará um quiz para você com explicações, macetes e mais.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <ClientOnly>
             <form onSubmit={handleGenerateQuestions} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="subject" className="text-base font-medium block mb-1">Matéria</Label>
+                  <Input 
+                    id="subject" 
+                    placeholder="Ex: Direito Constitucional" 
+                    value={subject} 
+                    onChange={(e) => setSubject(e.target.value)} 
+                    disabled={isLoading}
+                    className="text-base"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="topic" className="text-base font-medium block mb-1">Tópico</Label>
+                  <Input 
+                    id="topic" 
+                    placeholder="Ex: Artigo 5º" 
+                    value={topic} 
+                    onChange={(e) => setTopic(e.target.value)} 
+                    disabled={isLoading}
+                    className="text-base"
+                  />
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="legalText" className="text-base font-medium block mb-1">Texto Legal</Label>
                 <Textarea
@@ -185,7 +228,7 @@ export default function HomePage() {
               </div>
               
               <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                <Button type="submit" disabled={isLoading || !legalText.trim()} className="w-full sm:w-auto bg-primary hover:bg-primary/90">
+                <Button type="submit" disabled={isLoading || !legalText.trim() || !subject.trim() || !topic.trim()} className="w-full sm:w-auto bg-primary hover:bg-primary/90">
                   {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                   Gerar Questões
                 </Button>
@@ -212,6 +255,9 @@ export default function HomePage() {
             <CardTitle className="flex items-center gap-2 text-xl">
               <ListChecks className="text-primary"/> Questões Geradas
             </CardTitle>
+            <CardDescription>
+                Matéria: <span className="font-semibold text-foreground">{subject}</span> | Tópico: <span className="font-semibold text-foreground">{topic}</span>
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {generatedQuestions.map((q, index) => (
@@ -238,7 +284,7 @@ export default function HomePage() {
                   </RadioGroup>
                   
                   {!showFeedback[q.id] && (
-                    <Button onClick={() => handleCheckAnswer(q)} size="sm">
+                    <Button onClick={() => handleCheckAnswer(q)} size="sm" disabled={userAnswers[q.id] === undefined || userAnswers[q.id] === null}>
                       <CheckCircle className="mr-2 h-4 w-4" /> Verificar Resposta
                     </Button>
                   )}
@@ -288,7 +334,7 @@ export default function HomePage() {
                                   <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 max-w-xs mx-auto">
                                       <Image 
                                           src={q.simulatedSourcedImageUrl} 
-                                          alt={q.simulatedSourcedImageDescription} 
+                                          alt={q.simulatedSourcedImageDescription || "Imagem relacionada"} 
                                           width={200} 
                                           height={150}
                                           className="rounded-md object-cover"

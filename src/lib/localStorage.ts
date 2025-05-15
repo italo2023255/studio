@@ -1,18 +1,22 @@
 
 import type { IAnsweredQuestion, ILegalAnswer } from '@/types';
 
-// Key for the quiz generator history
-const QUIZ_HISTORY_KEY = 'lexquiz_ai_history'; // Reverted to original key for quiz questions
+const QUIZ_HISTORY_KEY = 'lexquiz_ai_history_v3'; // Updated key to include subject/topic
 
 export function getHistory(): IAnsweredQuestion[] {
   try {
     if (typeof window !== 'undefined') {
       const historyJson = localStorage.getItem(QUIZ_HISTORY_KEY);
       if (historyJson) {
-        const parsedHistory = JSON.parse(historyJson);
-        // Basic check for IAnsweredQuestion structure
+        const parsedHistory = JSON.parse(historyJson) as IAnsweredQuestion[];
+        // Add basic validation for new fields, though older items might not have them
         if (Array.isArray(parsedHistory) && parsedHistory.every(item => 'question' in item && 'options' in item && 'correctAnswerIndex' in item && 'questionStyle' in item)) {
-            return parsedHistory as IAnsweredQuestion[];
+            return parsedHistory.map(item => ({
+                ...item,
+                // Ensure subject and topic exist, even if undefined from older entries
+                subject: item.subject || undefined,
+                topic: item.topic || undefined,
+            }));
         }
         console.warn("Invalid quiz history format detected. Returning empty history.");
         return [];
@@ -36,14 +40,12 @@ export function saveHistory(history: IAnsweredQuestion[]): void {
 
 export function addAnswerToHistory(answeredQuestion: IAnsweredQuestion): void {
   const history = getHistory();
-  // Add to the beginning of the array so newest items are first
-  const updatedHistory = [answeredQuestion, ...history].slice(0, 50); // Keep last 50 entries
+  const updatedHistory = [answeredQuestion, ...history].slice(0, 100); // Keep last 100 entries
   saveHistory(updatedHistory);
 }
 
 
 // --- Functions for ILegalAnswer (legal assistant feature history, now secondary) ---
-// Kept for potential future use or if you decide to have a separate history for it.
 const LEGAL_ASSISTANT_HISTORY_KEY = 'lexquiz_ai_legal_assistant_history_v2';
 
 export function getLegalAssistantHistory(): ILegalAnswer[] {

@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input'; // Adicionado Input
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateQuestions } from '@/ai/flows/generate-questions';
 import type { IQGeneratedQuestion, QuestionStyle, IAnsweredQuestion } from '@/types';
 import { addAnswerToHistory } from '@/lib/localStorage';
-import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, Send, MessageCircleQuestion, Edit3, Settings2, ImageIcon as ImageIconLucide, RotateCcw, CheckCircle, XCircle, ListChecks, FileQuestion as FileQuestionIcon, Youtube, FileType, UploadCloud } from 'lucide-react';
+import { Loader2, Lightbulb, Link as LinkIcon, Info, FileText, Send, MessageCircleQuestion, Edit3, Settings2, ImageIcon as ImageIconLucide, RotateCcw, CheckCircle, XCircle, ListChecks, FileQuestion as FileQuestionIcon, Youtube, FileType, UploadCloud, BookOpen, Tag } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ClientOnly } from '@/components/ClientOnly';
@@ -24,8 +24,6 @@ import { ClientOnly } from '@/components/ClientOnly';
 // Função heurística para verificar se o texto extraído é provavelmente lixo
 function isLikelyGarbage(text: string): boolean {
   if (!text || text.length < 50) return false; // Muito curto para julgar ou vazio
-  // Procura por uma alta proporção de caracteres de substituição (geralmente indica problemas de codificação/binário)
-  // ou uma baixa proporção de espaços (textos reais geralmente têm espaços).
   const replacementCharRegex = /\uFFFD/g;
   const spaceRegex = /\s/g;
 
@@ -35,8 +33,6 @@ function isLikelyGarbage(text: string): boolean {
   const spaceMatches = text.match(spaceRegex);
   const percentageSpaces = (spaceMatches ? spaceMatches.length : 0) / text.length;
 
-  // Se mais de 20% são caracteres de substituição, ou menos de 5% são espaços (para textos mais longos),
-  // é provável que seja lixo. Ajuste esses limites conforme necessário.
   if (text.length > 200 && percentageSpaces < 0.05) return true;
   return percentageReplacement > 0.20;
 }
@@ -44,6 +40,8 @@ function isLikelyGarbage(text: string): boolean {
 
 export default function GenerateFromPdfPage() {
   const [pdfText, setPdfText] = useState<string>('');
+  const [subject, setSubject] = useState<string>('');
+  const [topic, setTopic] = useState<string>('');
   const [numQuestions, setNumQuestions] = useState<number>(1);
   const [questionStyle, setQuestionStyle] = useState<QuestionStyle>('cespe');
   const [generatedQuestions, setGeneratedQuestions] = useState<IQGeneratedQuestion[]>([]);
@@ -59,11 +57,11 @@ export default function GenerateFromPdfPage() {
     if (file) {
       if (file.type !== 'application/pdf') {
         toast({ title: 'Arquivo Inválido', description: 'Por favor, selecione um arquivo PDF.', variant: 'destructive' });
-        event.target.value = ''; // Limpa o input
+        event.target.value = ''; 
         return;
       }
       setIsProcessingFile(true);
-      setPdfText(''); // Limpa o texto anterior enquanto processa
+      setPdfText(''); 
 
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -81,12 +79,12 @@ export default function GenerateFromPdfPage() {
           toast({
             title: 'Falha na Extração Automática do PDF',
             description: 'Não foi possível extrair o texto do PDF automaticamente ou o conteúdo é incompreensível. Por favor, copie e cole o texto do seu PDF manualmente na área indicada.',
-            variant: 'destructive', // Changed to destructive for clarity
+            variant: 'destructive', 
             duration: 10000,
           });
         }
         setIsProcessingFile(false);
-        event.target.value = ''; // Limpa o input para permitir o mesmo upload novamente se necessário
+        event.target.value = ''; 
       };
       reader.onerror = () => {
         setPdfText('');
@@ -96,9 +94,9 @@ export default function GenerateFromPdfPage() {
           description: 'Ocorreu um erro ao tentar ler o arquivo. Por favor, copie e cole o texto manualmente.',
           variant: 'destructive',
         });
-        event.target.value = ''; // Limpa o input
+        event.target.value = ''; 
       };
-      reader.readAsText(file); // Tenta ler o PDF como texto puro
+      reader.readAsText(file); 
     }
   };
 
@@ -106,6 +104,14 @@ export default function GenerateFromPdfPage() {
     event.preventDefault();
     if (!pdfText.trim()) {
       toast({ title: 'Texto do PDF Ausente', description: 'Por favor, cole o texto do PDF ou faça upload de um arquivo para extração.', variant: 'destructive' });
+      return;
+    }
+    if (!subject.trim()) {
+      toast({ title: 'Matéria Ausente', description: 'Por favor, insira o nome da matéria.', variant: 'destructive' });
+      return;
+    }
+    if (!topic.trim()) {
+      toast({ title: 'Tópico Ausente', description: 'Por favor, insira o tópico da matéria.', variant: 'destructive' });
       return;
     }
 
@@ -124,6 +130,8 @@ export default function GenerateFromPdfPage() {
       const questionsWithClientIds = result.questions.map((q, index) => ({
         ...q,
         id: `${Date.now()}-pdf-q${index}`, 
+        subject: subject,
+        topic: topic,
       }));
       setGeneratedQuestions(questionsWithClientIds);
 
@@ -155,6 +163,8 @@ export default function GenerateFromPdfPage() {
       userAnswerIndex,
       isCorrect,
       timestamp: Date.now(),
+      subject: question.subject,
+      topic: question.topic,
     };
     addAnswerToHistory(answeredQuestion);
 
@@ -169,6 +179,8 @@ export default function GenerateFromPdfPage() {
   
   const handleReset = () => {
     setPdfText('');
+    setSubject('');
+    setTopic('');
     setNumQuestions(1);
     setQuestionStyle('cespe');
     setGeneratedQuestions([]);
@@ -176,7 +188,6 @@ export default function GenerateFromPdfPage() {
     setShowFeedback({});
     setIsLoading(false);
     setIsProcessingFile(false);
-    // Reset file input if possible (requires a ref or other methods)
     const fileInput = document.getElementById('pdfUpload') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
   };
@@ -203,12 +214,37 @@ export default function GenerateFromPdfPage() {
             <FileType className="text-primary" /> Gerador de Questões por PDF
           </CardTitle>
           <CardDescription>
-            Faça upload de um arquivo PDF para tentar extrair o texto, ou copie e cole o texto do seu PDF abaixo. Depois, escolha o número e o estilo das questões.
+            Insira a matéria, o tópico, faça upload de um PDF para extração de texto (experimental), ou cole o texto do PDF abaixo. Depois, escolha o número e o estilo das questões.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <ClientOnly>
             <form onSubmit={handleGenerateQuestions} className="space-y-6">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="pdfSubject" className="text-base font-medium block mb-1">Matéria</Label>
+                  <Input 
+                    id="pdfSubject" 
+                    placeholder="Ex: Direito Penal" 
+                    value={subject} 
+                    onChange={(e) => setSubject(e.target.value)} 
+                    disabled={isLoading || isProcessingFile}
+                    className="text-base"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="pdfTopic" className="text-base font-medium block mb-1">Tópico</Label>
+                  <Input 
+                    id="pdfTopic" 
+                    placeholder="Ex: Dos Crimes Contra a Vida" 
+                    value={topic} 
+                    onChange={(e) => setTopic(e.target.value)} 
+                    disabled={isLoading || isProcessingFile}
+                    className="text-base"
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="pdfUpload" className="text-base font-medium">Upload de Arquivo PDF (Experimental)</Label>
                 <Input
@@ -282,7 +318,7 @@ export default function GenerateFromPdfPage() {
               </div>
               
               <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                <Button type="submit" disabled={isLoading || isProcessingFile || !pdfText.trim()} className="w-full sm:w-auto bg-primary hover:bg-primary/90">
+                <Button type="submit" disabled={isLoading || isProcessingFile || !pdfText.trim() || !subject.trim() || !topic.trim()} className="w-full sm:w-auto bg-primary hover:bg-primary/90">
                   {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                   Gerar Questões do Texto
                 </Button>
@@ -309,6 +345,9 @@ export default function GenerateFromPdfPage() {
             <CardTitle className="flex items-center gap-2 text-xl">
               <ListChecks className="text-primary"/> Questões Geradas do Texto Fornecido
             </CardTitle>
+             <CardDescription>
+                Matéria: <span className="font-semibold text-foreground">{subject}</span> | Tópico: <span className="font-semibold text-foreground">{topic}</span>
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {generatedQuestions.map((q, index) => (
@@ -428,6 +467,4 @@ export default function GenerateFromPdfPage() {
     </div>
   );
 }
-    
-
     

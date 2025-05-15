@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { LogoIcon } from '@/components/icons/LogoIcon';
 import { Button } from '@/components/ui/button';
-import { History, Home, MessageSquareText, FileType } from 'lucide-react';
+import { History, Home, MessageSquareText, FileType, BarChart3 } from 'lucide-react';
 
 export function Header() {
   return (
@@ -34,6 +34,12 @@ export function Header() {
             </Link>
           </Button>
           <Button variant="ghost" size="sm" asChild>
+            <Link href="/desempenho" className="flex items-center gap-1">
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Desempenho</span>
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
             <Link href="/feedback" className="flex items-center gap-1">
               <MessageSquareText className="h-4 w-4" />
               <span className="hidden sm:inline">Feedback</span>
@@ -44,5 +50,4 @@ export function Header() {
     </header>
   );
 }
-
     

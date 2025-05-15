@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Lightbulb, Link as LinkIcon, Info, FileText, Image as ImageIconLucide, MessageCircle, CheckCircle, XCircle, Youtube } from 'lucide-react';
+import { Lightbulb, Link as LinkIcon, Info, FileText, Image as ImageIconLucide, MessageCircle, CheckCircle, XCircle, Youtube, BookOpen, Tag } from 'lucide-react';
 import NextImage from 'next/image'; 
 import { Badge } from '@/components/ui/badge';
 
@@ -32,6 +32,8 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
     correctAnswerIndex,
     explanation,
     questionStyle,
+    subject, // Added subject
+    topic,   // Added topic
     aiGeneratedMnemonics,
     externalSearchLinks,
     simulatedSourcedImageDescription,
@@ -71,12 +73,14 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
           <DialogTitle className="text-2xl flex items-center gap-2">
              <MessageCircle className="text-primary h-6 w-6" /> Detalhes da Questão Respondida
           </DialogTitle>
-          <DialogDescription>
-            Revisão da questão respondida em {new Date(timestamp).toLocaleString('pt-BR')}.
-            Estilo: {getQuestionStyleLabel(questionStyle)}.
+          <DialogDescription className="flex flex-col sm:flex-row sm:gap-2 text-xs">
+            <span>Respondido em {new Date(timestamp).toLocaleString('pt-BR')}.</span>
+            <span>Estilo: {getQuestionStyleLabel(questionStyle)}.</span>
+            {subject && <span>Matéria: {subject}.</span>}
+            {topic && <span>Tópico: {topic}.</span>}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[calc(80vh-150px)] pr-6">
+        <ScrollArea className="max-h-[calc(80vh-180px)] pr-6"> {/* Adjusted height */}
           <div className="space-y-6 py-4">
             <div>
               <h3 className="font-semibold text-lg mb-1">Questão:</h3>
@@ -94,16 +98,18 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
                 </div>
             )}
 
-            {userAnswerIndex !== null && (
+            {userAnswerIndex !== null && userAnswerIndex !== undefined && options[userAnswerIndex] && (
                  <div>
                     <h3 className="font-semibold text-md">Sua Resposta:</h3>
-                    <p className="text-muted-foreground">{options[userAnswerIndex] ? (questionStyle !== 'cespe' ? String.fromCharCode(65 + userAnswerIndex) + '. ' : '') + options[userAnswerIndex] : "Não disponível"}</p>
+                    <p className="text-muted-foreground">{ (questionStyle !== 'cespe' ? String.fromCharCode(65 + userAnswerIndex) + '. ' : '') + options[userAnswerIndex]}</p>
                 </div>
             )}
-             <div>
-                <h3 className="font-semibold text-md">Resposta Correta:</h3>
-                <p className="text-muted-foreground">{options[correctAnswerIndex] ? (questionStyle !== 'cespe' ? String.fromCharCode(65 + correctAnswerIndex) + '. ' : '') + options[correctAnswerIndex] : "Não disponível"}</p>
-            </div>
+             {correctAnswerIndex !== null && correctAnswerIndex !== undefined && options[correctAnswerIndex] && (
+                <div>
+                    <h3 className="font-semibold text-md">Resposta Correta:</h3>
+                    <p className="text-muted-foreground">{(questionStyle !== 'cespe' ? String.fromCharCode(65 + correctAnswerIndex) + '. ' : '') + options[correctAnswerIndex]}</p>
+                </div>
+            )}
 
             <Separator/>
             <div>

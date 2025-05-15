@@ -12,10 +12,13 @@ export interface IQGeneratedQuestion {
   questionStyle: QuestionStyle;
   keyConceptForEnrichment?: string; // Used internally by generateQuestions flow
 
+  // User-defined context
+  subject?: string; // Matéria
+  topic?: string; // Tópico
+
   // Enriched content for each question
   aiGeneratedMnemonics?: string[];
   externalSearchLinks?: string[]; // Links from simulated internet search
-  // aiGeneratedImageDataUri?: string | null; // Removed: AI-generated image for this specific question is no longer default
   // Simulated sourced content (from enhanceAnswerWithInternetSearch)
   simulatedSourcedImageDescription?: string;
   simulatedSourcedImageUrl?: string;
@@ -46,3 +49,11 @@ export interface ILegalAnswer {
   timestamp: number;
 }
 
+// For performance page
+export interface SubjectPerformance {
+  subject: string;
+  correct: number;
+  incorrect: number;
+  total: number;
+  percentage: number;
+}
