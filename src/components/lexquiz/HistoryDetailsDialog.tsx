@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Lightbulb, Link as LinkIcon, Info, FileText, Image as ImageIconLucide, MessageCircle, CheckCircle, XCircle, Youtube } from 'lucide-react';
-import NextImage from 'next/image'; // Renamed to NextImage to avoid conflict with lucide-react Image
+import NextImage from 'next/image'; 
 import { Badge } from '@/components/ui/badge';
 
 interface HistoryDetailsDialogProps {
@@ -34,7 +34,6 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
     questionStyle,
     aiGeneratedMnemonics,
     externalSearchLinks,
-    // aiGeneratedImageDataUri, // Removed
     simulatedSourcedImageDescription,
     simulatedSourcedImageUrl,
     simulatedSourcedMnemonic,
@@ -58,6 +57,11 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
     } catch (e) {
       return false;
     }
+  };
+
+  const generateAiHint = (description?: string): string => {
+    if (!description) return "legal concept";
+    return description.toLowerCase().split(/\s+/).slice(0, 2).join(' ') || "legal concept";
   };
 
   return (
@@ -132,7 +136,7 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
                             width={250} 
                             height={180}
                             className="rounded-md object-cover"
-                            data-ai-hint="legal illustration diagram study"
+                            data-ai-hint={generateAiHint(simulatedSourcedImageDescription)}
                         />
                     </div>
                 </div>

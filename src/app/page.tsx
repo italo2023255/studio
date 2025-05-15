@@ -115,6 +115,11 @@ export default function HomePage() {
     }
   };
 
+  const generateAiHint = (description?: string): string => {
+    if (!description) return "legal concept";
+    return description.toLowerCase().split(/\s+/).slice(0, 2).join(' ') || "legal concept";
+  };
+
   return (
     <div className="space-y-8">
       <Card className="shadow-lg">
@@ -287,7 +292,7 @@ export default function HomePage() {
                                           width={200} 
                                           height={150}
                                           className="rounded-md object-cover"
-                                          data-ai-hint="legal illustration study"
+                                          data-ai-hint={generateAiHint(q.simulatedSourcedImageDescription)}
                                       />
                                   </div>
                               </div>
