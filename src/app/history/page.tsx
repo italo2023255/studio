@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { ClientOnly } from '@/components/ClientOnly';
 
+const ALL_ITEMS_VALUE = "_all_";
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<IAnsweredQuestion[]>([]);
@@ -138,12 +139,15 @@ export default function HistoryPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-end">
                 <div>
                   <Label htmlFor="filterSubject" className="text-sm font-medium">Filtrar por Matéria</Label>
-                  <Select value={filterSubject} onValueChange={setFilterSubject}>
+                  <Select 
+                    value={filterSubject === '' ? ALL_ITEMS_VALUE : filterSubject} 
+                    onValueChange={(value) => setFilterSubject(value === ALL_ITEMS_VALUE ? '' : value)}
+                  >
                     <SelectTrigger id="filterSubject">
                       <SelectValue placeholder="Todas as Matérias" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas as Matérias</SelectItem>
+                      <SelectItem value={ALL_ITEMS_VALUE}>Todas as Matérias</SelectItem>
                       {uniqueSubjects.map(subject => (
                         <SelectItem key={subject} value={subject}>{subject}</SelectItem>
                       ))}
@@ -152,12 +156,16 @@ export default function HistoryPage() {
                 </div>
                 <div>
                   <Label htmlFor="filterTopic" className="text-sm font-medium">Filtrar por Tópico</Label>
-                  <Select value={filterTopic} onValueChange={setFilterTopic} disabled={!uniqueTopics.length && !filterSubject}>
+                  <Select 
+                    value={filterTopic === '' ? ALL_ITEMS_VALUE : filterTopic} 
+                    onValueChange={(value) => setFilterTopic(value === ALL_ITEMS_VALUE ? '' : value)} 
+                    disabled={!uniqueTopics.length && !filterSubject}
+                  >
                     <SelectTrigger id="filterTopic">
                       <SelectValue placeholder="Todos os Tópicos" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos os Tópicos</SelectItem>
+                      <SelectItem value={ALL_ITEMS_VALUE}>Todos os Tópicos</SelectItem>
                       {uniqueTopics.map(topic => (
                         <SelectItem key={topic} value={topic}>{topic}</SelectItem>
                       ))}
