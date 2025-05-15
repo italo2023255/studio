@@ -1,4 +1,3 @@
-
 import Link from 'next/link';
 import { LogoIcon } from '@/components/icons/LogoIcon';
 import { Button } from '@/components/ui/button';
@@ -15,36 +14,26 @@ export function Header() {
           </span>
         </Link>
         <nav className="flex items-center gap-2 sm:gap-3">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/" className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" asChild><Link href="/" className="flex items-center gap-1">
               <Home className="h-4 w-4" />
               <span className="hidden sm:inline">Início</span>
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/gerar-com-pdf" className="flex items-center gap-1">
+            </Link></Button>
+          <Button variant="ghost" size="sm" asChild><Link href="/gerar-com-pdf" className="flex items-center gap-1">
               <FileType className="h-4 w-4" />
               <span className="hidden sm:inline">Gerar por PDF</span>
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/history" className="flex items-center gap-1">
+            </Link></Button>
+          <Button variant="ghost" size="sm" asChild><Link href="/history" className="flex items-center gap-1">
               <History className="h-4 w-4" />
               <span className="hidden sm:inline">Histórico</span>
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/desempenho" className="flex items-center gap-1">
+            </Link></Button>
+          <Button variant="ghost" size="sm" asChild><Link href="/desempenho" className="flex items-center gap-1">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Desempenho</span>
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/feedback" className="flex items-center gap-1">
+            </Link></Button>
+          <Button variant="outline" size="sm" asChild><Link href="/feedback" className="flex items-center gap-1">
               <MessageSquareText className="h-4 w-4" />
               <span className="hidden sm:inline">Feedback</span>
-            </Link>
-          </Button>
+            </Link></Button>
         </nav>
       </div>
     </header>
