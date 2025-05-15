@@ -23,7 +23,7 @@ const SimulatedQuestionObjectSchema = z.object({
     correctAnswerIndex: z.number().int().min(0).describe('Index of the correct answer in the options array.'),
     explanation: z.string().describe('Explanation of why the answer is correct, referencing the provided legal text strictly (letra da lei).'),
     keyConceptForEnrichment: z.string().optional().describe('A 2-5 word key concept from the question/explanation, to guide further enrichment.'),
-    source: z.string().describe('The simulated source of the question, e.g., "Simulado: Cespe - 2023 - Analista Judiciário".'),
+    source: z.string().describe('The source of the question, created to appear as if from an exam board, e.g., "Semelhante: Cespe - 2023 - Analista Judiciário".'),
     questionStyle: z.enum(['cespe', 'mcq4', 'mcq5']).describe('The style of the generated question.')
 }).refine(data => {
     if (data.questionStyle === 'cespe') {
@@ -43,13 +43,13 @@ const FindSimulatedExternalQuestionsInputSchema = z.object({
   legalText: z.string().describe('The legal text to base the questions on.'),
   subject: z.string().optional().describe('The subject/matéria of the legal text.'),
   topic: z.string().optional().describe('The specific topic within the subject.'),
-  numQuestions: z.number().int().min(1).max(3).describe('The number of simulated external questions to generate (1-3).'),
-  targetQuestionStyle: z.enum(['cespe', 'mcq4', 'mcq5']).describe('The desired style for the simulated questions.')
+  numQuestions: z.number().int().min(1).max(3).describe('The number of external questions to generate (1-3).'),
+  targetQuestionStyle: z.enum(['cespe', 'mcq4', 'mcq5']).describe('The desired style for the questions.')
 });
 export type FindSimulatedExternalQuestionsInput = z.infer<typeof FindSimulatedExternalQuestionsInputSchema>;
 
 const FindSimulatedExternalQuestionsOutputSchema = z.object({
-  questions: z.array(SimulatedQuestionObjectSchema).describe('An array of simulated external question objects.'),
+  questions: z.array(SimulatedQuestionObjectSchema).describe('An array of external question objects.'),
 });
 export type FindSimulatedExternalQuestionsOutput = z.infer<typeof FindSimulatedExternalQuestionsOutputSchema>;
 
@@ -72,7 +72,7 @@ Para CADA questão, você DEVE:
 3.  Definir 'correctAnswerIndex' (0-3 para MCQ4, 0-4 para MCQ5, 0-1 para Cespe).
 4.  Escrever uma 'explanation' concisa, justificando a resposta CORRETA e baseada ESTRITAMENTE no TEXTO LEGAL fornecido.
 5.  Criar um 'keyConceptForEnrichment' (2-5 palavras) relevante para a questão.
-6.  Inventar um campo 'source' realista, prefixado com "Simulado: ", indicando uma banca e um concurso fictício. Exemplos: "Simulado: Cespe - 2023 - Analista Judiciário", "Simulado: FGV - 2022 - Auditor Fiscal", "Simulado: FCC - 2024 - Técnico Legislativo". Varie as bancas.
+6.  Inventar um campo 'source' realista, prefixado com "Semelhante: ", indicando uma banca e um concurso fictício. Exemplos: "Semelhante: Cespe - 2023 - Analista Judiciário", "Semelhante: FGV - 2022 - Auditor Fiscal", "Semelhante: FCC - 2024 - Técnico Legislativo". Varie as bancas.
 7.  Definir o campo 'questionStyle' para corresponder a '{{targetQuestionStyle}}'.
 
 O resultado DEVE ser um objeto JSON com uma chave "questions", contendo um array destes objetos de questão.
@@ -96,7 +96,7 @@ Exemplo de uma questão múltipla escolha (mcq4) no array 'questions':
   "correctAnswerIndex": 1,
   "explanation": "Conforme o Art. X da Lei Y, o prazo para recurso é de 15 dias.",
   "keyConceptForEnrichment": "prazo recursal lei Y",
-  "source": "Simulado: Vunesp - 2023 - Escrevente Técnico",
+  "source": "Semelhante: Vunesp - 2023 - Escrevente Técnico",
   "questionStyle": "mcq4"
 }
 
@@ -107,7 +107,7 @@ Exemplo de uma questão Cespe no array 'questions':
   "correctAnswerIndex": 0,
   "explanation": "Correto. O Art. Z da Lei W dispõe sobre a demissão por abandono de cargo.",
   "keyConceptForEnrichment": "abandono de cargo lei W",
-  "source": "Simulado: Cespe - 2022 - Policial Federal",
+  "source": "Semelhante: Cespe - 2022 - Policial Federal",
   "questionStyle": "cespe"
 }
 `,
@@ -123,7 +123,7 @@ const findSimulatedExternalQuestionsFlow = ai.defineFlow(
     const {output, text: rawText} = await prompt(input);
     if (!output || !output.questions || output.questions.length === 0) {
       console.error(
-        'findSimulatedExternalQuestionsFlow: Failed to generate simulated questions or output was invalid. Input:', input, 'Raw LLM response:', rawText
+        'findSimulatedExternalQuestionsFlow: Failed to generate questions or output was invalid. Input:', input, 'Raw LLM response:', rawText
       );
       // Fallback to empty array if generation fails
       return { questions: [] };
@@ -147,7 +147,7 @@ const findSimulatedExternalQuestionsFlow = ai.defineFlow(
 
 
     if (validatedQuestions.length !== output.questions.length) {
-        console.warn('findSimulatedExternalQuestionsFlow: Some simulated questions were filtered out due to style/options mismatch after generation. Initial count:', output.questions.length, 'Final count:', validatedQuestions.length);
+        console.warn('findSimulatedExternalQuestionsFlow: Some questions were filtered out due to style/options mismatch after generation. Initial count:', output.questions.length, 'Final count:', validatedQuestions.length);
     }
     
     return { questions: validatedQuestions };

@@ -152,7 +152,7 @@ export default function HomePage() {
             <Edit3 className="text-primary" /> Gerador de Questões Jurídicas
           </CardTitle>
           <CardDescription>
-            Insira a matéria, o tópico, um trecho de lei, e a IA criará um quiz com explicações, macetes e mais. Você também pode solicitar questões simuladas de bancas.
+            Insira a matéria, o tópico, um trecho de lei, e a IA criará um quiz com explicações, macetes e mais. Você também pode solicitar questões semelhantes às de bancas.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -239,7 +239,7 @@ export default function HomePage() {
                     disabled={isLoading}
                   />
                   <Label htmlFor="fetchSimulatedExternal" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    Incluir Questões de Bancas (Simulado)?
+                    Incluir Questões de Bancas (Semelhantes)?
                   </Label>
                 </div>
               </div>
@@ -279,7 +279,7 @@ export default function HomePage() {
                 <SearchCheck className="h-4 w-4" />
                 <AlertTitle>Sobre Questões de Bancas</AlertTitle>
                 <AlertDescription>
-                  As questões marcadas como "Simulado: [Nome da Banca]" são geradas pela IA para se assemelharem a questões reais de concurso e servem para fins de estudo e prática. Elas não são retiradas de provas oficiais.
+                  As questões marcadas como "Semelhante: [Nome da Banca]" são geradas pela IA para se assemelharem a questões reais de concurso e servem para fins de estudo e prática. Elas não são retiradas de provas oficiais.
                 </AlertDescription>
             </Alert>
           </CardHeader>
@@ -351,13 +351,13 @@ export default function HomePage() {
 
                           {q.simulatedSourcedMnemonic && (
                               <div>
-                                  <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><Lightbulb className="text-orange-500 h-5 w-5"/> Exemplo de Macete (Simulado de Fontes)</h4>
+                                  <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><Lightbulb className="text-orange-500 h-5 w-5"/> Exemplo de Macete (Semelhante de Fontes)</h4>
                                   <p className="text-muted-foreground italic text-sm">"{q.simulatedSourcedMnemonic}"</p>
                               </div>
                           )}
                           
                           <div>
-                            <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400 h-5 w-5"/> Imagem (Simulada de Fontes)</h4>
+                            <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400 h-5 w-5"/> Imagem (Semelhante de Fontes)</h4>
                             {q.simulatedSourcedImageUrl && q.simulatedSourcedImageDescription && !noImageResponseRegex.test(q.simulatedSourcedImageDescription) ? (
                                 <>
                                     <p className="text-sm text-muted-foreground mb-1 italic">"{q.simulatedSourcedImageDescription}"</p>
@@ -379,7 +379,7 @@ export default function HomePage() {
                           
                           {q.externalSearchLinks && q.externalSearchLinks.length > 0 && (
                             <div>
-                              <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><LinkIcon className="text-primary h-5 w-5"/> Links Úteis (Pesquisa Simulada)</h4>
+                              <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><LinkIcon className="text-primary h-5 w-5"/> Links Úteis (Pesquisa Semelhante)</h4>
                               <ul className="list-disc list-inside text-muted-foreground space-y-1 pl-5 text-sm">
                                 {q.externalSearchLinks.map((link, idx) => (
                                   <li key={`ext-link-${q.id}-${idx}`} className="flex items-center gap-1">
