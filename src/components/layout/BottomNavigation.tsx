@@ -24,16 +24,16 @@ export function BottomNavigation() {
           const isActive = pathname === item.href;
           return (
             <Link
-              key={item.label}
+              key={item.href} // Using href for key as it's guaranteed unique
               href={item.href}
               className={cn(
-                'group inline-flex flex-col items-center justify-center px-3 py-2 hover:bg-muted hover:text-primary',
+                'group inline-flex flex-col items-center justify-center px-2 py-2 sm:px-3 text-center hover:bg-muted hover:text-primary focus:outline-none focus:bg-muted/80 focus:text-primary',
                 isActive ? 'text-primary bg-muted/50' : 'text-muted-foreground'
               )}
               aria-current={isActive ? 'page' : undefined}
             >
-              <item.icon className={cn('mb-1 h-5 w-5', isActive ? 'text-primary' : 'group-hover:text-primary')} />
-              <span className={cn("text-xs", isActive? "font-semibold" : "")}>{item.label}</span>
+              <item.icon className={cn('mb-1 h-5 w-5', isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary group-focus:text-primary')} />
+              <span className={cn("text-[10px] sm:text-xs leading-tight", isActive ? "font-semibold text-primary" : "text-muted-foreground group-hover:text-primary group-focus:text-primary")}>{item.label}</span>
             </Link>
           );
         })}
