@@ -121,8 +121,12 @@ export default function ReviewPage() {
   };
 
   const generateAiHint = (description?: string): string => {
-    if (!description) return "legal concept";
-    return description.toLowerCase().split(/\s+/).slice(0, 2).join(' ') || "legal concept";
+    const defaultHint = "legal"; 
+    if (!description || description.trim() === "" || /nenhuma imagem|não encontrada|não aplicável/i.test(description.toLowerCase())) {
+        return defaultHint;
+    }
+    const words = description.toLowerCase().match(/[a-zA-Z0-9À-ÖØ-öø-ÿ]{3,}/g) || [];
+    return words.slice(0, 2).join(' ') || defaultHint;
   };
   
   const isYoutubeLink = (link: string) => {
@@ -133,6 +137,8 @@ export default function ReviewPage() {
       return false;
     }
   };
+
+  const noImageResponseRegex = /nenhuma imagem|não encontrada|não aplicável/i;
 
 
   if (!isMounted) {
@@ -307,7 +313,7 @@ export default function ReviewPage() {
                 Matéria: {questionToReview.subject || 'N/A'} | Tópico: {questionToReview.topic || 'N/A'} | Fonte: {questionToReview.source}
               </ReviewDialogDescription>
             </ReviewDialogHeader>
-            <ScrollArea className="max-h-[65vh] p-1 pr-3"> {/* Adjusted max height */}
+            <ScrollArea className="max-h-[65vh] p-1 pr-3"> 
             <div className="space-y-4 py-4">
               <p className="text-foreground whitespace-pre-wrap text-base">{questionToReview.question}</p>
               <RadioGroup
@@ -372,22 +378,26 @@ export default function ReviewPage() {
                       </div>
                   )}
                   
-                  {questionToReview.simulatedSourcedImageUrl && questionToReview.simulatedSourcedImageDescription && (
-                    <div>
-                        <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400 h-5 w-5"/> Imagem (Simulada de Fontes)</h4>
-                        <p className="text-sm text-muted-foreground mb-1 italic">"{questionToReview.simulatedSourcedImageDescription}"</p>
-                        <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 max-w-xs mx-auto">
-                            <Image 
-                                src={questionToReview.simulatedSourcedImageUrl} 
-                                alt={questionToReview.simulatedSourcedImageDescription || "Imagem relacionada"} 
-                                width={200} 
-                                height={150}
-                                className="rounded-md object-cover"
-                                data-ai-hint={generateAiHint(questionToReview.simulatedSourcedImageDescription)}
-                            />
-                        </div>
-                    </div>
-                  )}
+                  <div>
+                      <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400 h-5 w-5"/> Imagem (Simulada de Fontes)</h4>
+                      {questionToReview.simulatedSourcedImageUrl && questionToReview.simulatedSourcedImageDescription && !noImageResponseRegex.test(questionToReview.simulatedSourcedImageDescription) ? (
+                          <>
+                              <p className="text-sm text-muted-foreground mb-1 italic">"{questionToReview.simulatedSourcedImageDescription}"</p>
+                              <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 max-w-xs mx-auto">
+                                  <Image 
+                                      src={questionToReview.simulatedSourcedImageUrl} 
+                                      alt={questionToReview.simulatedSourcedImageDescription} 
+                                      width={200} 
+                                      height={150}
+                                      className="rounded-md object-cover"
+                                      data-ai-hint={generateAiHint(questionToReview.simulatedSourcedImageDescription)}
+                                  />
+                              </div>
+                          </>
+                      ) : (
+                          <p className="text-sm text-muted-foreground text-center italic py-4">Imagem do assunto não encontrada.</p>
+                      )}
+                  </div>
                   
                   {questionToReview.externalSearchLinks && questionToReview.externalSearchLinks.length > 0 && (
                     <div>

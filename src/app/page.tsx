@@ -65,11 +65,10 @@ export default function HomePage() {
         questionStyle,
         subject,
         topic,
-        fetchSimulatedExternal, // Pass new flag
-        numSimulatedExternal: fetchSimulatedExternal ? 2 : 0, // Example: fetch 2 if checked
+        fetchSimulatedExternal, 
+        numSimulatedExternal: fetchSimulatedExternal ? 2 : 0, 
       });
       
-      // ID and subject/topic are now set within the flow for all questions
       setGeneratedQuestions(result.questions);
 
       toast({ title: 'Questões Geradas!', description: `${result.questions.length} questões foram criadas com sucesso.` });
@@ -96,11 +95,10 @@ export default function HomePage() {
     
     const answeredQuestion: IAnsweredQuestion = {
       ...question,
-      legalTextContext: legalText, // Save context of original legal text used
+      legalTextContext: legalText, 
       userAnswerIndex,
       isCorrect,
       timestamp: Date.now(),
-      // subject and topic are already part of IQGeneratedQuestion
     };
     addAnswerToHistory(answeredQuestion);
 
@@ -136,9 +134,15 @@ export default function HomePage() {
   };
 
   const generateAiHint = (description?: string): string => {
-    if (!description) return "legal concept";
-    return description.toLowerCase().split(/\s+/).slice(0, 2).join(' ') || "legal concept";
+    const defaultHint = "legal"; 
+    if (!description || description.trim() === "" || /nenhuma imagem|não encontrada|não aplicável/i.test(description.toLowerCase())) {
+        return defaultHint;
+    }
+    const words = description.toLowerCase().match(/[a-zA-Z0-9À-ÖØ-öø-ÿ]{3,}/g) || [];
+    return words.slice(0, 2).join(' ') || defaultHint;
   };
+  
+  const noImageResponseRegex = /nenhuma imagem|não encontrada|não aplicável/i;
 
   return (
     <div className="space-y-8">
@@ -204,7 +208,7 @@ export default function HomePage() {
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[1, 2, 3, 4, 5].map(n => ( // Max 5 for inéditas for now
+                      {[1, 2, 3, 4, 5].map(n => ( 
                         <SelectItem key={n} value={n.toString()}>{n} questão(ões)</SelectItem>
                       ))}
                     </SelectContent>
@@ -352,22 +356,26 @@ export default function HomePage() {
                               </div>
                           )}
                           
-                          {q.simulatedSourcedImageUrl && q.simulatedSourcedImageDescription && (
-                              <div>
-                                  <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400 h-5 w-5"/> Imagem (Simulada de Fontes)</h4>
-                                  <p className="text-sm text-muted-foreground mb-1 italic">"{q.simulatedSourcedImageDescription}"</p>
-                                  <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 max-w-xs mx-auto">
-                                      <Image 
-                                          src={q.simulatedSourcedImageUrl} 
-                                          alt={q.simulatedSourcedImageDescription || "Imagem relacionada"} 
-                                          width={200} 
-                                          height={150}
-                                          className="rounded-md object-cover"
-                                          data-ai-hint={generateAiHint(q.simulatedSourcedImageDescription)}
-                                      />
-                                  </div>
-                              </div>
-                          )}
+                          <div>
+                            <h4 className="font-semibold text-md mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400 h-5 w-5"/> Imagem (Simulada de Fontes)</h4>
+                            {q.simulatedSourcedImageUrl && q.simulatedSourcedImageDescription && !noImageResponseRegex.test(q.simulatedSourcedImageDescription) ? (
+                                <>
+                                    <p className="text-sm text-muted-foreground mb-1 italic">"{q.simulatedSourcedImageDescription}"</p>
+                                    <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 max-w-xs mx-auto">
+                                        <Image 
+                                            src={q.simulatedSourcedImageUrl} 
+                                            alt={q.simulatedSourcedImageDescription} 
+                                            width={200} 
+                                            height={150}
+                                            className="rounded-md object-cover"
+                                            data-ai-hint={generateAiHint(q.simulatedSourcedImageDescription)}
+                                        />
+                                    </div>
+                                </>
+                            ) : (
+                                <p className="text-sm text-muted-foreground text-center italic py-4">Imagem do assunto não encontrada.</p>
+                            )}
+                          </div>
                           
                           {q.externalSearchLinks && q.externalSearchLinks.length > 0 && (
                             <div>

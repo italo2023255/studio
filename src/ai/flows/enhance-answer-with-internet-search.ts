@@ -2,7 +2,7 @@
 'use server';
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const EnhanceAnswerWithInternetSearchInputSchema = z.object({
   question: z.string().describe('The original user question or quiz question text.'),
@@ -16,8 +16,8 @@ export type EnhanceAnswerWithInternetSearchInput =
 const EnhanceAnswerWithInternetSearchOutputSchema = z.object({
   enhancedAnswer: z.string().describe('The enhanced answer/explanation incorporating internet search results, legal reasoning, and precedents found. This should elaborate on the initial answer. For quiz questions, this might just be the original explanation if no further enhancement is applicable.'),
   searchLinks: z.array(z.string().url()).describe('An array of URLs to relevant jurisprudence, legal articles, or explanatory videos (e.g., YouTube).'),
-  simulatedSourcedImageDescription: z.string().optional().describe("A textual description of an illustrative image one might find on a legal forum or contest preparation site related to the key concept or legal text. E.g., 'Diagram illustrating the stages of a criminal trial.'"),
-  simulatedSourcedImageUrl: z.string().url().optional().describe("A placeholder URL for the described image (e.g., using placehold.co). This will be used as the primary image for the question."),
+  simulatedSourcedImageDescription: z.string().optional().describe("A textual description of an illustrative image one might find on a legal forum or contest preparation site related to the key concept or legal text. E.g., 'Diagram illustrating the stages of a criminal trial.' If no relevant image can be conceptualized, this should be explicitly stated (e.g., 'Nenhuma imagem conceitual relevante para este tema.') or left empty."),
+  simulatedSourcedImageUrl: z.string().url().optional().describe("A placeholder URL for the described image (e.g., using placehold.co). Should only be provided if a relevant, positive image description exists. Leave empty if no relevant image description."),
   simulatedSourcedMnemonic: z.string().optional().describe("A mnemonic or memory aid as if found on a specialized legal study site or forum, related to the key concept or legal text. E.g., 'Para lembrar os requisitos da legítima defesa: P.U.M.A. (Proporcionalidade, Utilização moderada dos meios, Moderação, Agressão injusta)'"),
 });
 export type EnhanceAnswerWithInternetSearchOutput =
@@ -46,14 +46,14 @@ const searchInternetTool = ai.defineTool(
                 type: z.enum(["jurisprudence", "article", "video", "forum_discussion", "youtube_video", "other"]).describe("Type of content. Use 'youtube_video' for YouTube links.")
             })
         ).describe('A list of relevant search results, including YouTube videos if found.'),
-        exampleImageDescription: z.string().optional().describe("Example description of a relevant conceptual image found on a study site (e.g., 'Fluxograma do processo de inventário')."),
+        exampleImageDescription: z.string().optional().describe("Example description of a relevant conceptual image found on a study site (e.g., 'Fluxograma do processo de inventário'). If no relevant image can be conceptualized, return an empty string or a phrase like 'Nenhuma imagem relevante.'"),
         exampleMnemonic: z.string().optional().describe("Example mnemonic found on a study site (e.g., 'Para as excludentes de ilicitude: LEET (Legítima Defesa, Estrito Cumprimento do Dever Legal, Exercício Regular de Direito, Estado de Necessidade)')."),
     }),
   },
   async (toolInput) => {
     // Placeholder implementation for internet search.
     console.log(`Simulating internet search for: ${toolInput.query} (Concept: ${toolInput.keyConcept})`);
-    const imageDesc = toolInput.keyConcept ? `Ilustração conceitual sobre ${toolInput.keyConcept}, comum em materiais de estudo.` : undefined;
+    const imageDesc = toolInput.keyConcept ? `Ilustração conceitual sobre ${toolInput.keyConcept}, comum em materiais de estudo.` : `Nenhuma imagem conceitual relevante para ${toolInput.query}.`;
     const mnemonicText = toolInput.keyConcept ? `MACETE para ${toolInput.keyConcept}: Lembre-se de 'ABC' (Algo Bem Conceitual).` : undefined;
     
     const links = [
@@ -104,8 +104,8 @@ const prompt = ai.definePrompt({
   2. Analisar os resultados da busca.
   3. Formular uma 'enhancedAnswer' que integre as descobertas mais relevantes, se aplicável, ou mantenha a resposta inicial se for suficiente (especialmente para explicações de questões de concurso que já são baseadas na 'letra da lei').
   4. Compilar uma lista de 'searchLinks' com os URLs mais úteis (jurisprudência, artigos, vídeos do YouTube).
-  5. Fornecer 'simulatedSourcedImageDescription': uma descrição textual de uma imagem ilustrativa relevante (como se encontrada em um site de estudos). Ex: "Fluxograma do recurso especial."
-  6. Fornecer 'simulatedSourcedImageUrl': um URL de placeholder para esta imagem descrita (use https://placehold.co/600x400.png). ESTA SERÁ A IMAGEM PRINCIPAL USADA.
+  5. Fornecer 'simulatedSourcedImageDescription': uma descrição textual de uma imagem ilustrativa RELEVANTE (como se encontrada em um site de estudos). Ex: "Fluxograma do recurso especial." Se nenhuma imagem conceitual relevante for aplicável ou puder ser descrita, retorne uma string vazia ou uma frase como 'Nenhuma imagem conceitual relevante para este tema.'
+  6. Fornecer 'simulatedSourcedImageUrl': um URL de placeholder para esta imagem descrita (use https://placehold.co/600x400.png). Forneça este URL APENAS SE uma 'simulatedSourcedImageDescription' relevante e positiva foi gerada. Caso contrário, retorne uma string vazia ou deixe nulo.
   7. Fornecer 'simulatedSourcedMnemonic': um mnemônico útil (como se encontrado em um fórum ou site especializado), com uma breve indicação de sua "origem" conceitual. Ex: "MACETE de cursinho para os requisitos da petição inicial: Endereçamento, Qualificação, Fatos, Direito, Pedido (EQFDP)."
 
   Contexto Fornecido:
@@ -117,14 +117,16 @@ const prompt = ai.definePrompt({
   Instruções para o output (JSON):
   - 'enhancedAnswer': Mantenha ou elabore a resposta.
   - 'searchLinks': Array de URLs (incluir YouTube se pertinente).
-  - 'simulatedSourcedImageDescription': Descrição da imagem simulada.
-  - 'simulatedSourcedImageUrl': URL placeholder para a imagem (ex: https://placehold.co/600x400.png).
+  - 'simulatedSourcedImageDescription': Descrição da imagem simulada. Se não houver, indicar explicitamente ou retornar string vazia.
+  - 'simulatedSourcedImageUrl': URL placeholder para a imagem. Somente se houver descrição relevante. Caso contrário, string vazia ou nulo.
   - 'simulatedSourcedMnemonic': Mnemônico simulado.
 
   Seja preciso e referencie as fontes (tipos de fontes) conceitualmente ao descrever imagens e mnemônicos simulados.
   Priorize links do YouTube para vídeos, se encontrados.
   `,
 });
+
+const noImageResponseRegex = /nenhuma imagem|não encontrada|não aplicável/i;
 
 const enhanceAnswerWithInternetSearchFlow = ai.defineFlow(
   {
@@ -141,24 +143,28 @@ const enhanceAnswerWithInternetSearchFlow = ai.defineFlow(
         'Raw LLM response text:',
         rawText
       );
-      // Fallback to a simpler response if enhancement fails
       return {
-        enhancedAnswer: input.answer, // Return initial answer
+        enhancedAnswer: input.answer, 
         searchLinks: [],
-        simulatedSourcedImageDescription: "Nenhuma descrição de imagem adicional encontrada.",
-        simulatedSourcedImageUrl: undefined, // No placeholder if no description
+        simulatedSourcedImageDescription: "Nenhuma imagem conceitual relevante para este tema.",
+        simulatedSourcedImageUrl: undefined, 
         simulatedSourcedMnemonic: "Nenhum mnemônico adicional encontrado."
       };
     }
-    // Ensure placeholder URL if description exists but URL doesn't, or generate one if description is good but no URL
-    if (output.simulatedSourcedImageDescription && !output.simulatedSourcedImageUrl) {
-        // Generate a placeholder based on the description.
-        const hint = output.simulatedSourcedImageDescription.toLowerCase().split(' ').slice(0,2).join(' ');
+
+    // Ensure URL is cleared if description is effectively absent or negative
+    if (!output.simulatedSourcedImageDescription || output.simulatedSourcedImageDescription.trim() === "" || noImageResponseRegex.test(output.simulatedSourcedImageDescription)) {
+        output.simulatedSourcedImageDescription = "Nenhuma imagem conceitual relevante para este tema."; // Standardize the "not found" text
+        output.simulatedSourcedImageUrl = undefined;
+    } else if (output.simulatedSourcedImageDescription && !output.simulatedSourcedImageUrl) {
+        // If description is present and positive, but no URL, add placeholder
         output.simulatedSourcedImageUrl = `https://placehold.co/600x400.png`;
     } else if (!output.simulatedSourcedImageDescription && output.simulatedSourcedImageUrl) {
-        // If somehow URL exists but no description, clear URL.
+        // If somehow URL exists but no (valid) description, clear URL and set description.
+        output.simulatedSourcedImageDescription = "Nenhuma imagem conceitual relevante para este tema.";
         output.simulatedSourcedImageUrl = undefined;
     }
+    
     return output;
   }
 );

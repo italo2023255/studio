@@ -36,7 +36,7 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
     questionStyle,
     subject, 
     topic,   
-    source, // Added source
+    source, 
     aiGeneratedMnemonics,
     externalSearchLinks,
     simulatedSourcedImageDescription,
@@ -65,9 +65,15 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
   };
 
   const generateAiHint = (description?: string): string => {
-    if (!description) return "legal concept";
-    return description.toLowerCase().split(/\s+/).slice(0, 2).join(' ') || "legal concept";
+    const defaultHint = "legal"; 
+    if (!description || description.trim() === "" || /nenhuma imagem|não encontrada|não aplicável/i.test(description.toLowerCase())) {
+        return defaultHint;
+    }
+    const words = description.toLowerCase().match(/[a-zA-Z0-9À-ÖØ-öø-ÿ]{3,}/g) || [];
+    return words.slice(0, 2).join(' ') || defaultHint;
   };
+
+  const noImageResponseRegex = /nenhuma imagem|não encontrada|não aplicável/i;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -84,7 +90,7 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
             {source && <span className="font-semibold">Fonte: {source}.</span>}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[calc(80vh-200px)] pr-6"> {/* Adjusted height more */}
+        <ScrollArea className="max-h-[calc(80vh-200px)] pr-6"> 
           <div className="space-y-6 py-4">
             <div>
               <h3 className="font-semibold text-lg mb-1">Questão:</h3>
@@ -140,26 +146,27 @@ export function HistoryDetailsDialog({ isOpen, onClose, answeredQuestion }: Hist
             </>
             )}
 
-
-            {simulatedSourcedImageUrl && simulatedSourcedImageDescription && (
-                <>
-                <Separator/>
-                <div>
-                    <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400"/> Imagem (Simulada de Fontes):</h3>
-                    <p className="text-sm text-muted-foreground mb-2 italic">"{simulatedSourcedImageDescription}"</p>
-                    <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 my-2 max-w-xs mx-auto">
-                        <NextImage 
-                            src={simulatedSourcedImageUrl} 
-                            alt={simulatedSourcedImageDescription || "Placeholder de imagem externa"}
-                            width={250} 
-                            height={180}
-                            className="rounded-md object-cover"
-                            data-ai-hint={generateAiHint(simulatedSourcedImageDescription)}
-                        />
-                    </div>
-                </div>
-                </>
-            )}
+            <Separator/>
+            <div>
+                <h3 className="font-semibold text-lg mb-1 flex items-center gap-2"><ImageIconLucide className="text-orange-400"/> Imagem (Simulada de Fontes):</h3>
+                {simulatedSourcedImageUrl && simulatedSourcedImageDescription && !noImageResponseRegex.test(simulatedSourcedImageDescription) ? (
+                    <>
+                        <p className="text-sm text-muted-foreground mb-2 italic">"{simulatedSourcedImageDescription}"</p>
+                        <div className="flex justify-center items-center p-2 border rounded-md bg-muted/30 my-2 max-w-xs mx-auto">
+                            <NextImage 
+                                src={simulatedSourcedImageUrl} 
+                                alt={simulatedSourcedImageDescription}
+                                width={250} 
+                                height={180}
+                                className="rounded-md object-cover"
+                                data-ai-hint={generateAiHint(simulatedSourcedImageDescription)}
+                            />
+                        </div>
+                    </>
+                ) : (
+                    <p className="text-sm text-muted-foreground text-center italic py-4">Imagem do assunto não encontrada.</p>
+                )}
+            </div>
 
             {aiGeneratedMnemonics && aiGeneratedMnemonics.length > 0 && (
               <>
