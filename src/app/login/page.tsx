@@ -99,7 +99,6 @@ export default function LoginPage() {
             <Link href="/register" className="text-primary hover:underline">
               Registre-se aqui
             </Link>
-            {' '} (Página de registro não implementada).
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
             Nota: Este é um formulário de login visual. A autenticação real precisa ser implementada.
