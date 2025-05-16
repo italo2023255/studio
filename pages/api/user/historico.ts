@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // pages/api/user/historico.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
@@ -32,4 +33,19 @@ export default async function handler(
     res.setHeader('Allow', ['GET']);
     return res.status(405).json({ error: `Método ${req.method} não permitido` });
   }
+=======
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "../auth/[...nextauth]";
+import dbConnect from "../../../lib/mongodb";
+import User from "../../../models/User";
+
+export default async function handler(req, res) {
+  const session = await getServerSession(req, res, authOptions);
+  if (!session) return res.status(401).json({ error: "Não autorizado" });
+
+  await dbConnect();
+
+  const user = await User.findOne({ email: session.user.email });
+  return res.status(200).json(user.questoesRespondidas || []);
+>>>>>>> d1ec33f6534020bf31a656cfcf5c365f0cb0de0f
 }
