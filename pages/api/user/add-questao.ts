@@ -1,19 +1,38 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "../auth/[...nextauth]";
-import dbConnect from "../../../lib/mongodb";
-import User from "../../../models/User";
+// pages/api/user/add-questao.ts
 
-export default async function handler(req, res) {
+import { NextApiRequest, NextApiResponse } from "next";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import dbConnect from "@/lib/mongodb";
+import User from "@/lib/models/User";
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
-  if (!session) return res.status(401).json({ error: "Não autorizado" });
+
+  if (!session) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 
   await dbConnect();
 
-  const user = await User.findOne({ email: session.user.email });
+  try {
+    const user = await User.findOne({ email: session.user?.email });
 
-  const novaQuestao = req.body;
-  user.questoesRespondidas.push(novaQuestao);
-  await user.save();
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
 
-  return res.status(200).json({ ok: true, message: "Questão salva com sucesso" });
+    // exemplo de adicionar uma questão respondida
+    const { questao } = req.body;
+    if (!questao) {
+      return res.status(400).json({ error: "Missing questao field" });
+    }
+
+    user.questoesRespondidas.push(questao);
+    await user.save();
+
+    return res.status(200).json({ message: "Questao added successfully" });
+  } catch (error) {
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 }
